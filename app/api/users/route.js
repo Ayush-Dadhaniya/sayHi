@@ -207,8 +207,9 @@ export async function POST(req) {
         id: Date.now().toString(),
         ...userData,
         avatar: "/placeholder-user.jpg",
-        isOnline: true,
+        isOnline: Math.random() > 0.3, // 70% chance of being online
         isAdmin: false, // Default to not an admin
+        lastSeen: new Date().toISOString()
       }
       try {
         const client = await clientPromise

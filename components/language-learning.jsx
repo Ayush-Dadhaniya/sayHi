@@ -54,12 +54,31 @@ export default function LanguageLearning({ currentUser, onBack }) {
   const [progress, setProgress] = useState(null)
   const [userScores, setUserScores] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [availableLanguages, setAvailableLanguages] = useState([])
+
+  useEffect(() => {
+    fetchAvailableLanguages()
+  }, [])
 
   useEffect(() => {
     if (selectedLanguage) {
       fetchProgress()
     }
   }, [selectedLanguage])
+
+  const fetchAvailableLanguages = async () => {
+    try {
+      const response = await fetch('/api/language-learning?action=getAvailableLanguages')
+      const data = await response.json()
+      const languagesWithLessons = LANGUAGES.filter(lang => 
+        data.languages && data.languages.includes(lang.name)
+      )
+      setAvailableLanguages(languagesWithLessons)
+    } catch (error) {
+      console.error("Failed to fetch available languages:", error)
+      setAvailableLanguages(LANGUAGES) // Fallback to all languages
+    }
+  }
 
   const fetchProgress = async () => {
     try {
@@ -133,9 +152,6 @@ export default function LanguageLearning({ currentUser, onBack }) {
 
     if (isCorrect) {
       setScore(prev => prev + 1)
-    } else {
-      // Use a heart for wrong answer
-      await useHeart()
     }
 
     setTimeout(() => {
@@ -279,7 +295,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {LANGUAGES.map((language) => (
+            {availableLanguages.map((language) => (
               <Card 
                 key={language.id} 
                 className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -321,12 +337,12 @@ export default function LanguageLearning({ currentUser, onBack }) {
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-orange-500" />
-                <span className="font-semibold">{progress?.streak || 0}</span>
+                <Target className="h-5 w-5 text-green-500" />
+                <span className="font-semibold">Level {progress?.level || 1}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                <span className="font-semibold">{progress?.hearts || 5}</span>
+                <Zap className="h-5 w-5 text-blue-500" />
+                <span className="font-semibold">{progress?.xp || 0} XP</span>
               </div>
             </div>
           </div>
@@ -509,8 +525,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
             <div className="flex items-center gap-4">
               <Progress value={((currentQuestion + 1) / lessons.length) * 100} className="w-32" />
               <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5 text-red-500" />
-                <span>{progress?.hearts || 5}</span>
+                <span className="text-sm text-gray-600">{currentQuestion + 1} of {lessons.length}</span>
               </div>
             </div>
           </div>

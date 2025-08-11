@@ -5,11 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserPlus, Globe, MapPin, MessageCircle, LogOut } from "lucide-react"
+import { UserPlus, Globe, MapPin, MessageCircle, Filter, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Placeholder for Admin functionality, replace with actual implementation
 const AdminPanel = ({ currentUser }) => {
@@ -187,33 +185,43 @@ const AdminPanel = ({ currentUser }) => {
   );
 };
 
-// Main component for discovering users, finding friends, and the original discover functionality
+// Main component for discovering users with improved functionality
 export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat, mode = "discover" }) {
   const [users, setUsers] = useState([]);
+  const [displayedUsers, setDisplayedUsers] = useState([]);
   const [sentRequests, setSentRequests] = useState(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [activeView, setActiveView] = useState("discover"); // discover, findFriend
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    country: "",
+    language: "",
+    name: ""
+  });
 
   useEffect(() => {
-    fetchUsers();
+    if (activeView === "discover") {
+      fetchNearbyUsers();
+    }
     fetchSentRequests();
-  }, [currentUser, mode]); // Re-fetch when mode changes
+  }, [currentUser, activeView]);
 
-  const fetchUsers = async () => {
+  const fetchNearbyUsers = async () => {
     try {
       setIsLoading(true);
       setError("");
-      // Modify API call based on mode if necessary. For now, assuming discover endpoint works for both.
-      const response = await fetch(`/api/users?action=discover&currentUserId=${currentUser.id}`);
+      const response = await fetch(`/api/users?action=discover&currentUserId=${currentUser.id}&limit=${showMore ? 50 : 10}`);
       const data = await response.json();
 
       if (response.ok) {
-        // Filter out admin users from discovery if not admin
         const usersToShow = data.users?.filter(user => user.role !== 'admin' || currentUser.role === 'admin') || [];
         setUsers(usersToShow);
-        setFilteredUsers(usersToShow); // Initialize filtered users
+        applyFilters(usersToShow);
       } else {
         setError("Failed to load users");
       }
@@ -223,6 +231,53 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const searchUsers = async () => {
+    if (!searchQuery.trim()) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/users?action=findFriend&searchTerm=${encodeURIComponent(searchQuery)}&userId=${currentUser.id}`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setUsers(data.users || []);
+        setDisplayedUsers(data.users || []);
+      } else {
+        setError("Failed to search users");
+      }
+    } catch (error) {
+      console.error("Failed to search users:", error);
+      setError("Failed to search users");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const applyFilters = (userList = users) => {
+    let filtered = userList;
+
+    if (filters.country) {
+      filtered = filtered.filter(user => 
+        user.region?.toLowerCase().includes(filters.country.toLowerCase())
+      );
+    }
+
+    if (filters.language) {
+      filtered = filtered.filter(user => 
+        user.language?.toLowerCase().includes(filters.language.toLowerCase())
+      );
+    }
+
+    if (filters.name) {
+      filtered = filtered.filter(user => 
+        user.name?.toLowerCase().includes(filters.name.toLowerCase()) ||
+        user.username?.toLowerCase().includes(filters.name.toLowerCase())
+      );
+    }
+
+    setDisplayedUsers(filtered);
   };
 
   const fetchSentRequests = async () => {
@@ -257,19 +312,6 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
       }
     } catch (error) {
       console.error("Failed to send friend request:", error);
-    }
-  };
-
-  const handleSearch = (event) => {
-    const value = event.target.value.toLowerCase();
-    setSearchTerm(value);
-    if (value === "") {
-      setFilteredUsers(users);
-    } else {
-      setFilteredUsers(users.filter(user =>
-        user.name.toLowerCase().includes(value) ||
-        user.username.toLowerCase().includes(value)
-      ));
     }
   };
 
@@ -323,42 +365,144 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
 
   return (
     <div className="space-y-4">
+      {/* Navigation */}
+      <div className="flex gap-2 mb-4">
+        <Button
+          variant={activeView === "discover" ? "default" : "outline"}
+          onClick={() => {
+            setActiveView("discover");
+            setSearchQuery("");
+            setFilters({ country: "", language: "", name: "" });
+          }}
+        >
+          <Globe className="h-4 w-4 mr-2" />
+          Discover
+        </Button>
+        <Button
+          variant={activeView === "findFriend" ? "default" : "outline"}
+          onClick={() => setActiveView("findFriend")}
+        >
+          <Search className="h-4 w-4 mr-2" />
+          Find Friend
+        </Button>
+      </div>
+
+      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">
-            {mode === "friends" ? "Find Friends" : "Discover People"}
+            {activeView === "findFriend" ? "Find Friends" : "Discover People"}
           </h1>
           <p className="text-gray-600">
-            {mode === "friends" ? "Connect with friends for language exchange" : "Connect with language learners worldwide"}
+            {activeView === "findFriend" ? "Search for specific users" : "Connect with people nearby"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Input
-            type="text"
-            placeholder="Search users..."
-            value={searchTerm}
-            onChange={handleSearch}
-            className="w-48"
-          />
-          <Badge variant="secondary" className="text-sm">
-            {filteredUsers.length} people online
-          </Badge>
-          {/* Logout button with fixed SVG */}
-          <Button variant="outline" size="icon" onClick={() => console.log("Logout")}>
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
+        <Badge variant="secondary" className="text-sm">
+          {displayedUsers.length} people found
+        </Badge>
       </div>
 
-      {filteredUsers.length === 0 ? (
+      {/* Search and Filters */}
+      {activeView === "findFriend" && (
+        <div className="space-y-4 mb-6">
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Search by username or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={searchUsers}>
+              <Search className="h-4 w-4 mr-2" />
+              Search
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeView === "discover" && (
+        <div className="space-y-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+            {!showMore && users.length >= 10 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowMore(true);
+                  fetchNearbyUsers();
+                }}
+              >
+                Show More
+              </Button>
+            )}
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Country</label>
+                <Input
+                  placeholder="Filter by country"
+                  value={filters.country}
+                  onChange={(e) => {
+                    const newFilters = { ...filters, country: e.target.value };
+                    setFilters(newFilters);
+                    applyFilters();
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Language</label>
+                <Input
+                  placeholder="Filter by language"
+                  value={filters.language}
+                  onChange={(e) => {
+                    const newFilters = { ...filters, language: e.target.value };
+                    setFilters(newFilters);
+                    applyFilters();
+                  }}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Name</label>
+                <Input
+                  placeholder="Filter by name"
+                  value={filters.name}
+                  onChange={(e) => {
+                    const newFilters = { ...filters, name: e.target.value };
+                    setFilters(newFilters);
+                    applyFilters();
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+          <p className="text-gray-500 mt-2">Loading...</p>
+        </div>
+      ) : displayedUsers.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500">
-            {searchTerm ? "No users found matching your search." : "No users found to discover."}
+            {activeView === "findFriend" && searchQuery 
+              ? "No users found matching your search." 
+              : "No users found to discover."}
           </p>
         </div>
       ) : (
         <div className="grid gap-4">
-          {filteredUsers.map((user) => (
+          {displayedUsers.map((user) => (
             <Card key={user.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">

@@ -137,25 +137,59 @@ export default function AdminDashboard({ currentUser, onBack }) {
   const handleCreateLesson = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "createLesson",
-          adminUserId: currentUser.id,
-          ...newLesson
-        })
-      })
       
-      if (response.ok) {
-        fetchLessons()
-        setNewLesson({
-          language: "spanish",
-          course: "basics", 
-          title: "",
-          questions: [{ question: "", answer: "", options: ["", "", "", ""] }]
+      // Check if lesson with same title, language, and course already exists
+      const existingLesson = lessons.find(lesson => 
+        lesson.title === newLesson.title && 
+        lesson.language === newLesson.language && 
+        lesson.course === newLesson.course
+      )
+      
+      if (existingLesson) {
+        // Add questions to existing lesson
+        const response = await fetch("/api/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "addQuestionsToLesson",
+            adminUserId: currentUser.id,
+            lessonId: existingLesson.id,
+            questions: newLesson.questions
+          })
         })
-        alert("Lesson created successfully!")
+        
+        if (response.ok) {
+          fetchLessons()
+          setNewLesson({
+            language: "spanish",
+            course: "basics", 
+            title: "",
+            questions: [{ question: "", answer: "", options: ["", "", "", ""] }]
+          })
+          alert("Questions added to existing lesson successfully!")
+        }
+      } else {
+        // Create new lesson
+        const response = await fetch("/api/admin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "createLesson",
+            adminUserId: currentUser.id,
+            ...newLesson
+          })
+        })
+        
+        if (response.ok) {
+          fetchLessons()
+          setNewLesson({
+            language: "spanish",
+            course: "basics", 
+            title: "",
+            questions: [{ question: "", answer: "", options: ["", "", "", ""] }]
+          })
+          alert("Lesson created successfully!")
+        }
       }
     } catch (error) {
       console.error("Failed to create lesson:", error)
@@ -185,6 +219,110 @@ export default function AdminDashboard({ currentUser, onBack }) {
       }
     } catch (error) {
       console.error("Failed to update plan:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteEnterprise = async (enterpriseId) => {
+    if (!confirm("Are you sure you want to delete this enterprise?")) return
+    
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteEnterprise",
+          adminUserId: currentUser.id,
+          enterpriseId
+        })
+      })
+      
+      if (response.ok) {
+        fetchOrganizations()
+        alert("Enterprise deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to delete enterprise:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteUser = async (userId) => {
+    if (!confirm("Are you sure you want to delete this user?")) return
+    
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteUser",
+          adminUserId: currentUser.id,
+          userId
+        })
+      })
+      
+      if (response.ok) {
+        fetchUsers()
+        alert("User deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to delete user:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteLesson = async (lessonId) => {
+    if (!confirm("Are you sure you want to delete this lesson?")) return
+    
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deleteLesson",
+          adminUserId: currentUser.id,
+          lessonId
+        })
+      })
+      
+      if (response.ok) {
+        fetchLessons()
+        alert("Lesson deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to delete lesson:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeletePlan = async (planId) => {
+    if (!confirm("Are you sure you want to delete this plan?")) return
+    
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "deletePlan",
+          adminUserId: currentUser.id,
+          planId
+        })
+      })
+      
+      if (response.ok) {
+        fetchPlans()
+        alert("Plan deleted successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to delete plan:", error)
     } finally {
       setLoading(false)
     }
@@ -376,18 +514,28 @@ export default function AdminDashboard({ currentUser, onBack }) {
                 <div className="space-y-2">
                   {organizations.map(org => (
                     <div key={org.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <h3 className="font-semibold">{org.name}</h3>
-                        <p className="text-sm text-gray-600">{org.description}</p>
+                      <div className="flex items-center gap-3">
+                        <Building className="h-8 w-8 text-blue-500" />
+                        <div>
+                          <h3 className="font-semibold">{org.name}</h3>
+                          <p className="text-sm text-gray-600">{org.description}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{org.plan}</Badge>
+                        <Badge variant="outline" className="capitalize">{org.plan || 'free'}</Badge>
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => setViewingEnterprise(org)}
                         >
                           <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleDeleteEnterprise(org.id)}
+                        >
+                          Delete
                         </Button>
                       </div>
                     </div>
@@ -415,6 +563,9 @@ export default function AdminDashboard({ currentUser, onBack }) {
                       <SelectItem value="spanish">Spanish</SelectItem>
                       <SelectItem value="french">French</SelectItem>
                       <SelectItem value="german">German</SelectItem>
+                      <SelectItem value="japanese">Japanese</SelectItem>
+                      <SelectItem value="chinese">Chinese</SelectItem>
+                      <SelectItem value="italian">Italian</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={newLesson.course} onValueChange={(value) => setNewLesson({...newLesson, course: value})}>
@@ -425,6 +576,8 @@ export default function AdminDashboard({ currentUser, onBack }) {
                       <SelectItem value="basics">Basics</SelectItem>
                       <SelectItem value="food">Food</SelectItem>
                       <SelectItem value="family">Family</SelectItem>
+                      <SelectItem value="colors">Colors</SelectItem>
+                      <SelectItem value="numbers">Numbers</SelectItem>
                     </SelectContent>
                   </Select>
                   <Input
@@ -502,6 +655,13 @@ export default function AdminDashboard({ currentUser, onBack }) {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleDeleteLesson(lesson.id)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -527,6 +687,13 @@ export default function AdminDashboard({ currentUser, onBack }) {
                     <div className="flex gap-2">
                       <Badge variant="outline">{user.plan || "free"}</Badge>
                       {user.isAdmin && <Badge variant="secondary">Admin</Badge>}
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user.id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -547,33 +714,46 @@ export default function AdminDashboard({ currentUser, onBack }) {
                     {editingPlan === plan.name ? (
                       <div className="space-y-3">
                         <Input
-                          value={plan.price}
+                          value={plan.price || 0}
                           onChange={(e) => {
                             const updatedPlans = plans.map(p => 
-                              p.name === plan.name ? {...p, price: parseFloat(e.target.value)} : p
+                              p.name === plan.name ? {...p, price: parseFloat(e.target.value) || 0} : p
                             )
                             setPlans(updatedPlans)
                           }}
                           type="number"
+                          step="0.01"
                           placeholder="Price"
                         />
                         <Input
-                          value={plan.features?.join(', ') || ''}
+                          value={Array.isArray(plan.features) ? plan.features.join(', ') : ''}
                           onChange={(e) => {
                             const updatedPlans = plans.map(p => 
-                              p.name === plan.name ? {...p, features: e.target.value.split(', ')} : p
+                              p.name === plan.name ? {...p, features: e.target.value.split(', ').filter(f => f.trim())} : p
                             )
                             setPlans(updatedPlans)
                           }}
                           placeholder="Features (comma separated)"
                         />
                         <div className="flex gap-2">
-                          <Button onClick={() => handleUpdatePlan(plan.name, plan)}>
+                          <Button onClick={() => {
+                            const currentPlan = plans.find(p => p.name === plan.name)
+                            handleUpdatePlan(plan.name, {
+                              price: currentPlan.price,
+                              features: currentPlan.features
+                            })
+                          }}>
                             <Save className="h-4 w-4 mr-2" />
                             Save
                           </Button>
                           <Button variant="outline" onClick={() => setEditingPlan(null)}>
                             Cancel
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            onClick={() => handleDeletePlan(plan.name)}
+                          >
+                            Delete
                           </Button>
                         </div>
                       </div>
@@ -618,7 +798,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
                   </div>
                   <div>
                     <h3 className="font-semibold">Plan</h3>
-                    <Badge>{viewingEnterprise.plan}</Badge>
+                    <Badge variant="secondary" className="capitalize">{viewingEnterprise.plan || 'free'}</Badge>
                   </div>
                   <div>
                     <h3 className="font-semibold">Created</h3>

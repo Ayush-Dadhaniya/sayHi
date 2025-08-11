@@ -96,6 +96,11 @@ export async function GET(req) {
     return Response.json({ scores: scores || { totalScore: 0, averageScore: 0, testsCompleted: 0 } })
   }
 
+  if (action === "getAvailableLanguages") {
+    const languages = await lessonsCollection.distinct("language", { "questions.0": { $exists: true } })
+    return Response.json({ languages })
+  }
+
   return Response.json({ error: "Invalid action" }, { status: 400 })
 }
 

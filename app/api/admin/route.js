@@ -160,6 +160,46 @@ export async function POST(req) {
       return Response.json({ success: true })
     }
 
+    if (action === "deleteEnterprise") {
+      const { enterpriseId } = data
+      await db.collection("enterprises").deleteOne({ id: enterpriseId })
+      await db.collection("memberships").deleteMany({ enterpriseId })
+      return Response.json({ success: true })
+    }
+
+    if (action === "deleteUser") {
+      const { userId } = data
+      await usersCollection.deleteOne({ id: userId })
+      await db.collection("friendRequests").deleteMany({
+        $or: [{ fromUserId: userId }, { toUserId: userId }]
+      })
+      await db.collection("friendships").deleteMany({
+        $or: [{ user1: userId }, { user2: userId }]
+      })
+      return Response.json({ success: true })
+    }
+
+    if (action === "deleteLesson") {
+      const { lessonId } = data
+      await lessonsCollection.deleteOne({ id: lessonId })
+      return Response.json({ success: true })
+    }
+
+    if (action === "deletePlan") {
+      const { planId } = data
+      await plansCollection.deleteOne({ name: planId })
+      return Response.json({ success: true })
+    }
+
+    if (action === "addQuestionsToLesson") {
+      const { lessonId, questions } = data
+      await lessonsCollection.updateOne(
+        { id: lessonId },
+        { $push: { questions: { $each: questions } } }
+      )
+      return Response.json({ success: true })
+    }
+
     // Handle friend requests and finding friends
     if (action === "findFriend") {
       const { searchTerm } = data
