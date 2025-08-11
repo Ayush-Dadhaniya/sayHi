@@ -86,9 +86,8 @@ export default function GamificationDashboard({ currentUser, onBack }) {
         <Button variant="outline" onClick={onBack}>
           ← Back
         </Button>
-      </div></div>
-
-      {/* Overview Cards */}
+      </div>
+    </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-r from-orange-400 to-red-500 text-white">
           <CardContent className="p-4">
@@ -274,6 +273,5 @@ export default function GamificationDashboard({ currentUser, onBack }) {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
   )
 }
