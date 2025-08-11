@@ -1,4 +1,3 @@
-
 import clientPromise from "@/lib/mongodb"
 
 export async function GET(req) {
@@ -18,7 +17,7 @@ export async function GET(req) {
   if (action === "getProgress") {
     const progress = await progressCollection.findOne({ userId, language })
     const userScore = await userScoresCollection.findOne({ userId, language })
-    
+
     const progressData = progress || { 
       userId, 
       language, 
@@ -28,29 +27,55 @@ export async function GET(req) {
       streak: 0, 
       hearts: 5 
     }
-    
+
     if (userScore) {
       progressData.totalScore = userScore.totalScore
       progressData.averageScore = userScore.averageScore
       progressData.testsCompleted = userScore.testsCompleted
     }
-    
+
     return Response.json({ progress: progressData })
   }
 
   if (action === "getLessons") {
-    // First check if lessons exist in database
-    let lessons = await lessonsCollection.find({ language, course }).toArray()
-    
-    // If no lessons in database, create and store them
+    // Get lessons from database
+    const lessons = await lessonsCollection.find({ 
+      language, 
+      course 
+    }).toArray()
+
+    // If no lessons found, create default ones
     if (lessons.length === 0) {
-      const defaultLessons = createDefaultLessons(language, course)
-      if (defaultLessons.length > 0) {
-        await lessonsCollection.insertMany(defaultLessons)
-        lessons = defaultLessons
-      }
+      const defaultLessons = [
+        {
+          id: Date.now().toString(),
+          language,
+          course,
+          title: "Basic Greetings",
+          questions: [
+            {
+              id: 1,
+              question: "How do you say 'Hello' in Spanish?",
+              options: ["Hola", "Adiós", "Gracias", "Por favor"],
+              answer: "Hola",
+              audio: "/audio/spanish/hola.mp3"
+            },
+            {
+              id: 2,
+              question: "What does 'Gracias' mean?",
+              options: ["Hello", "Goodbye", "Thank you", "Please"],
+              answer: "Thank you",
+              audio: "/audio/spanish/gracias.mp3"
+            }
+          ],
+          createdAt: new Date().toISOString()
+        }
+      ]
+
+      await lessonsCollection.insertMany(defaultLessons)
+      return Response.json({ lessons: defaultLessons })
     }
-    
+
     return Response.json({ lessons })
   }
 
@@ -83,7 +108,7 @@ export async function POST(req) {
 
       // Get current progress
       let progress = await progressCollection.findOne({ userId, language })
-      
+
       if (!progress) {
         progress = {
           userId,
@@ -117,7 +142,7 @@ export async function POST(req) {
       // Update streak
       const today = new Date().toDateString()
       const lastActivity = new Date(progress.lastActivity).toDateString()
-      
+
       if (today === lastActivity) {
         // Same day, no change to streak
       } else if (new Date(today).getTime() - new Date(lastActivity).getTime() === 24 * 60 * 60 * 1000) {
@@ -158,10 +183,10 @@ export async function POST(req) {
       }
 
       await testsCollection.insertOne(test)
-      
+
       // Update user scores
       await updateUserScores(userScoresCollection, userId, language, score, totalQuestions)
-      
+
       return Response.json({ test })
     }
 
@@ -183,7 +208,7 @@ export async function POST(req) {
 
     if (action === "createLesson") {
       const { language, course, lessonData } = data
-      
+
       const lesson = {
         ...lessonData,
         id: Date.now().toString(),
@@ -191,7 +216,7 @@ export async function POST(req) {
         course,
         createdAt: new Date().toISOString()
       }
-      
+
       await lessonsCollection.insertOne(lesson)
       return Response.json({ lesson })
     }
@@ -205,7 +230,7 @@ export async function POST(req) {
 
 async function updateUserScores(userScoresCollection, userId, language, score, totalQuestions) {
   let userScore = await userScoresCollection.findOne({ userId, language })
-  
+
   if (!userScore) {
     userScore = {
       userId,
@@ -217,7 +242,7 @@ async function updateUserScores(userScoresCollection, userId, language, score, t
       worstScore: 100
     }
   }
-  
+
   const percentage = Math.round((score / totalQuestions) * 100)
   userScore.totalScore += score
   userScore.testsCompleted += 1
@@ -225,7 +250,7 @@ async function updateUserScores(userScoresCollection, userId, language, score, t
   userScore.bestScore = Math.max(userScore.bestScore, percentage)
   userScore.worstScore = Math.min(userScore.worstScore, percentage)
   userScore.lastUpdated = new Date().toISOString()
-  
+
   await userScoresCollection.replaceOne(
     { userId, language },
     userScore,

@@ -28,7 +28,10 @@ import {
   Sparkles,
   X,
   ArrowLeft,
-  Paperclip
+  Paperclip,
+  Building,
+  Shield,
+  Crown
 } from "lucide-react"
 
 import DiscoverUsers from "@/components/discover-users"
@@ -37,6 +40,9 @@ import FriendsList from "@/components/friends-list"
 import VideoCall from "@/components/video-call"
 import DatingMode from "@/components/dating-mode"
 import LanguageLearning from "@/components/language-learning"
+import AdminDashboard from "@/components/admin-dashboard"
+import TeamsDashboard from "@/components/teams-dashboard"
+import SubscriptionPlans from "@/components/subscription-plans"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import React from "react"
 import ChatInterface from "@/components/chat-interface"
@@ -96,6 +102,9 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   const [activeVideoCall, setActiveVideoCall] = useState(null)
   const [showDatingMode, setShowDatingMode] = useState(false)
   const [showLanguageLearning, setShowLanguageLearning] = useState(false)
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false)
+  const [showTeamsDashboard, setShowTeamsDashboard] = useState(false)
+  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false)
   const fileInputRef = React.useRef(null)
 
   // Handle starting a chat
@@ -129,6 +138,21 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   // Handle language learning
   const handleBackFromLanguageLearning = () => {
     setShowLanguageLearning(false)
+  }
+
+  // Handle admin dashboard
+  const handleBackFromAdmin = () => {
+    setShowAdminDashboard(false)
+  }
+
+  // Handle teams dashboard
+  const handleBackFromTeams = () => {
+    setShowTeamsDashboard(false)
+  }
+
+  // Handle subscription plans
+  const handleBackFromPlans = () => {
+    setShowSubscriptionPlans(false)
   }
 
   // Fetch friends count
@@ -261,6 +285,21 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   // Render language learning if active
   if (showLanguageLearning) {
     return <LanguageLearning currentUser={currentUser} onBack={handleBackFromLanguageLearning} />
+  }
+
+  // Render admin dashboard if active and user is admin
+  if (showAdminDashboard && currentUser.isAdmin) {
+    return <AdminDashboard currentUser={currentUser} onBack={handleBackFromAdmin} />
+  }
+
+  // Render teams dashboard if active
+  if (showTeamsDashboard) {
+    return <TeamsDashboard currentUser={currentUser} onBack={handleBackFromTeams} />
+  }
+
+  // Render subscription plans if active
+  if (showSubscriptionPlans) {
+    return <SubscriptionPlans currentUser={currentUser} onBack={handleBackFromPlans} />
   }
 
   return (
@@ -415,6 +454,35 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   <BookOpen className="h-4 w-4 mr-2" />
                   Learn Languages
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setShowTeamsDashboard(true)}
+                >
+                  <Building className="h-4 w-4 mr-2" />
+                  Teams
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setShowSubscriptionPlans(true)}
+                >
+                  <Crown className="h-4 w-4 mr-2" />
+                  Plans
+                </Button>
+                {currentUser.isAdmin && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full justify-start border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => setShowAdminDashboard(true)}
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    Admin Panel
+                  </Button>
+                )}
               </CardContent>
             </Card>
 
@@ -460,6 +528,24 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
                   <span>Language Learning</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => setShowTeamsDashboard(true)}
+                >
+                  <Building className="h-4 w-4 mr-2" />
+                  <span>Teams & Organizations</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => setShowSubscriptionPlans(true)}
+                >
+                  <Crown className="h-4 w-4 mr-2" />
+                  <span>Upgrade Plan</span>
                 </Button>
               </CardContent>
             </Card>
