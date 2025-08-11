@@ -24,16 +24,18 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
   const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true)
   const [callStatus, setCallStatus] = useState("connecting") // connecting, connected, ended
   const [callDuration, setCallDuration] = useState(0)
+  const [localStream, setLocalStream] = useState(null)
+  const [remoteStream, setRemoteStream] = useState(null)
+  const [peerConnection, setPeerConnection] = useState(null)
+  
   const localVideoRef = useRef(null)
   const remoteVideoRef = useRef(null)
 
   useEffect(() => {
-    // Simulate call connection
-    const timer = setTimeout(() => {
-      setCallStatus("connected")
-    }, 3000)
-
-    return () => clearTimeout(timer)
+    initializeWebRTC()
+    return () => {
+      cleanup()
+    }
   }, [])
 
   useEffect(() => {
@@ -46,6 +48,92 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
     return () => clearInterval(interval)
   }, [callStatus])
 
+  const initializeWebRTC = async () => {
+    try {
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
+      })
+      
+      setLocalStream(stream)
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream
+      }
+
+      // Create peer connection
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      })
+
+      // Add local stream to peer connection
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream)
+      })
+
+      // Handle remote stream
+      pc.ontrack = (event) => {
+        const [remoteStream] = event.streams
+        setRemoteStream(remoteStream)
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = remoteStream
+        }
+        setCallStatus("connected")
+      }
+
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          // Send candidate to remote peer via signaling server
+          sendSignalingMessage('ice-candidate', event.candidate)
+        }
+      }
+
+      setPeerConnection(pc)
+
+      // Simulate connection for demo
+      setTimeout(() => {
+        if (!remoteStream) {
+          setCallStatus("connected")
+        }
+      }, 3000)
+
+    } catch (error) {
+      console.error("Error initializing WebRTC:", error)
+      alert("Could not access camera/microphone. Please check permissions.")
+    }
+  }
+
+  const cleanup = () => {
+    if (localStream) {
+      localStream.getTracks().forEach(track => track.stop())
+    }
+    if (peerConnection) {
+      peerConnection.close()
+    }
+  }
+
+  const sendSignalingMessage = async (type, data) => {
+    // In a real app, this would send to your signaling server
+    try {
+      await fetch('/api/webrtc-signaling', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          data,
+          from: currentUser.id,
+          to: chatPartner.id
+        })
+      })
+    } catch (error) {
+      console.error("Signaling error:", error)
+    }
+  }
+
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -53,20 +141,36 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
   }
 
   const handleEndCall = () => {
+    cleanup()
     setCallStatus("ended")
     onEndCall()
   }
 
   const toggleVideo = () => {
-    setIsVideoEnabled(!isVideoEnabled)
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0]
+      if (videoTrack) {
+        videoTrack.enabled = !isVideoEnabled
+        setIsVideoEnabled(!isVideoEnabled)
+      }
+    }
   }
 
   const toggleAudio = () => {
-    setIsAudioEnabled(!isAudioEnabled)
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0]
+      if (audioTrack) {
+        audioTrack.enabled = !isAudioEnabled
+        setIsAudioEnabled(!isAudioEnabled)
+      }
+    }
   }
 
   const toggleSpeaker = () => {
-    setIsSpeakerEnabled(!isSpeakerEnabled)
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.muted = isSpeakerEnabled
+      setIsSpeakerEnabled(!isSpeakerEnabled)
+    }
   }
 
   return (
@@ -99,7 +203,7 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
         <div className="relative w-full h-full">
           {/* Remote Video (Full Screen) */}
           <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-            {callStatus === "connected" ? (
+            {callStatus === "connected" && remoteStream ? (
               <video
                 ref={remoteVideoRef}
                 className="w-full h-full object-cover"
@@ -116,7 +220,7 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
                 </Avatar>
                 <h3 className="text-2xl font-semibold mb-2">{chatPartner.name}</h3>
                 <p className="text-lg opacity-75">
-                  {callStatus === "connecting" ? "Connecting..." : "Call ended"}
+                  {callStatus === "connecting" ? "Connecting..." : "Waiting for video..."}
                 </p>
               </div>
             )}
@@ -124,7 +228,7 @@ export default function VideoCall({ currentUser, chatPartner, onEndCall }) {
 
           {/* Local Video (Picture in Picture) */}
           <div className="absolute top-20 right-4 w-48 h-36 bg-gray-800 rounded-lg overflow-hidden border-2 border-white/20">
-            {isVideoEnabled ? (
+            {isVideoEnabled && localStream ? (
               <video
                 ref={localVideoRef}
                 className="w-full h-full object-cover"

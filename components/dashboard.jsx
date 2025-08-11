@@ -35,8 +35,8 @@ import DiscoverUsers from "@/components/discover-users"
 import FriendRequests from "@/components/friend-requests"
 import FriendsList from "@/components/friends-list"
 import VideoCall from "@/components/video-call"
-import GiftExchange from "@/components/gift-exchange"
 import DatingMode from "@/components/dating-mode"
+import LanguageLearning from "@/components/language-learning"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import React from "react"
 import ChatInterface from "@/components/chat-interface"
@@ -94,8 +94,8 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   const [friendsCount, setFriendsCount] = useState(0)
   const [activeChat, setActiveChat] = useState(null)
   const [activeVideoCall, setActiveVideoCall] = useState(null)
-  const [showGiftExchange, setShowGiftExchange] = useState(false)
   const [showDatingMode, setShowDatingMode] = useState(false)
+  const [showLanguageLearning, setShowLanguageLearning] = useState(false)
   const fileInputRef = React.useRef(null)
 
   // Handle starting a chat
@@ -117,15 +117,6 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
     setActiveVideoCall(null)
   }
 
-  // Handle gift exchange
-  const handleShowGiftExchange = () => {
-    setShowGiftExchange(true)
-  }
-
-  const handleBackFromGiftExchange = () => {
-    setShowGiftExchange(false)
-  }
-
   // Handle dating mode
   const handleShowDatingMode = () => {
     setShowDatingMode(true)
@@ -133,6 +124,11 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
 
   const handleBackFromDatingMode = () => {
     setShowDatingMode(false)
+  }
+
+  // Handle language learning
+  const handleBackFromLanguageLearning = () => {
+    setShowLanguageLearning(false)
   }
 
   // Fetch friends count
@@ -257,14 +253,14 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
     return <VideoCall currentUser={currentUser} chatPartner={activeVideoCall} onEndCall={handleEndVideoCall} />
   }
 
-  // Render gift exchange if active
-  if (showGiftExchange) {
-    return <GiftExchange currentUser={currentUser} onBack={handleBackFromGiftExchange} />
-  }
-
   // Render dating mode if active
   if (showDatingMode) {
     return <DatingMode currentUser={currentUser} onBack={handleBackFromDatingMode} onStartChat={handleStartChat} />
+  }
+
+  // Render language learning if active
+  if (showLanguageLearning) {
+    return <LanguageLearning currentUser={currentUser} onBack={handleBackFromLanguageLearning} />
   }
 
   return (
@@ -403,23 +399,21 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   variant="outline" 
                   size="sm" 
                   className="w-full justify-start"
-                  onClick={handleShowGiftExchange}
+                  onClick={handleShowDatingMode}
                 >
-                  <Gift className="h-4 w-4 mr-2" />
-                  Gift Exchange
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
+                  Dating Mode
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   className="w-full justify-start"
-                  onClick={handleShowDatingMode}
+                  onClick={() => setShowLanguageLearning(true)}
                 >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Dating Mode
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Languages className="h-4 w-4 mr-2" />
-                  Language Exchange
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  Learn Languages
                 </Button>
               </CardContent>
             </Card>
@@ -431,7 +425,7 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   <div className="p-2 bg-green-500 rounded-lg">
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
-                  New Features
+                  Features
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -442,17 +436,10 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   onClick={() => activeChat && handleStartVideoCall(activeChat)}
                   disabled={!activeChat}
                 >
-                  <Video className="h-4 w-4 mr-2" />
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/>
+                  </svg>
                   <span>Video Calls</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
-                  onClick={handleShowGiftExchange}
-                >
-                  <Gift className="h-4 w-4 mr-2" />
-                  <span>Gift Exchange</span>
                 </Button>
                 <Button 
                   variant="ghost" 
@@ -460,13 +447,20 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={handleShowDatingMode}
                 >
-                  <Heart className="h-4 w-4 mr-2" />
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  </svg>
                   <span>Dating Mode</span>
                 </Button>
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <Trophy className="h-4 w-4" />
-                  <span>Achievements (Coming Soon)</span>
-                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => setShowLanguageLearning(true)}
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  <span>Language Learning</span>
+                </Button>
               </CardContent>
             </Card>
           </div>

@@ -34,6 +34,9 @@ const INTERESTS = [
 ]
 
 export default function DatingMode({ currentUser, onBack, onStartChat }) {
+  const [showTerms, setShowTerms] = useState(true)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [wantsDating, setWantsDating] = useState(null)
   const [activeTab, setActiveTab] = useState("discover") // discover, matches, likes
   const [datingProfile, setDatingProfile] = useState(null)
   const [potentialMatches, setPotentialMatches] = useState([])
@@ -175,8 +178,95 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
 
   const currentMatch = potentialMatches[currentMatchIndex]
 
+  // Terms and Conditions Modal
+  if (showTerms) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Dating Mode</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center mb-6">
+              <Heart className="h-16 w-16 mx-auto text-pink-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Are you looking for dating?</h3>
+              <p className="text-sm text-gray-600">
+                This mode helps you find meaningful romantic connections
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                variant={wantsDating === true ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setWantsDating(true)}
+              >
+                Yes, I'm interested in dating
+              </Button>
+              <Button
+                variant={wantsDating === false ? "default" : "outline"}
+                className="w-full"
+                onClick={() => setWantsDating(false)}
+              >
+                No, just looking for friends
+              </Button>
+            </div>
+
+            {wantsDating !== null && (
+              <>
+                <div className="bg-gray-50 p-4 rounded-lg text-sm">
+                  <h4 className="font-semibold mb-2">Terms & Conditions</h4>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>• Be respectful and kind to all users</li>
+                    <li>• No inappropriate content or behavior</li>
+                    <li>• You must be 18+ to use dating features</li>
+                    <li>• Report any suspicious activity</li>
+                    <li>• Your safety is our priority</li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    className="rounded"
+                  />
+                  <label htmlFor="terms" className="text-sm">
+                    I agree to the terms and conditions
+                  </label>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={onBack} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (wantsDating && termsAccepted) {
+                        setShowTerms(false)
+                      } else if (!wantsDating) {
+                        alert("Please use the 'Find Friends' feature instead!")
+                        onBack()
+                      }
+                    }}
+                    disabled={wantsDating && !termsAccepted}
+                    className="flex-1"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4"></div>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
