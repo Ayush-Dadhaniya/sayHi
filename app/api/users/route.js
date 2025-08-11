@@ -162,9 +162,10 @@ export async function POST(req) {
     }
 
     if (action === "createUser") {
+      const { interestedInDating, ...userData } = data
       const newUser = {
         id: Date.now().toString(),
-        ...data,
+        ...userData,
         avatar: "/placeholder-user.jpg",
         isOnline: true,
       }
@@ -172,6 +173,24 @@ export async function POST(req) {
         const client = await clientPromise
         const db = client.db("sayHi")
         const result = await db.collection("users").insertOne(newUser)
+        
+        // Create dating profile if user is interested
+        if (interestedInDating) {
+          const datingProfile = {
+            userId: newUser.id,
+            age: userData.age || 25,
+            occupation: userData.occupation || "Not specified",
+            bio: userData.bio || "Looking to meet new people and learn languages!",
+            interests: ["Travel", "Languages", "Meeting new people"],
+            lookingFor: "Friendship and language exchange",
+            photos: [newUser.avatar],
+            wantsDating: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+          
+          await db.collection("datingProfiles").insertOne(datingProfile)
+        }
         
         // Generate JWT token for new user
         const userWithId = { ...newUser, _id: result.insertedId }

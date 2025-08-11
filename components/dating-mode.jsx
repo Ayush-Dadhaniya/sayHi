@@ -22,7 +22,8 @@ import {
   ArrowLeft,
   MessageCircle,
   Filter,
-  Users
+  Users,
+  Video
 } from "lucide-react"
 
 const INTERESTS = [
@@ -41,120 +42,123 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
   const [datingProfile, setDatingProfile] = useState(null)
   const [potentialMatches, setPotentialMatches] = useState([])
   const [matches, setMatches] = useState([])
-  const [sentLikes, setSentLikes] = useState([])
   const [receivedLikes, setReceivedLikes] = useState([])
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
   const [ageRange, setAgeRange] = useState([18, 35])
   const [maxDistance, setMaxDistance] = useState(50)
   const [showFilters, setShowFilters] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetchDatingProfile()
-    fetchPotentialMatches()
-    fetchMatches()
-    fetchLikes()
+    checkExistingProfile()
   }, [])
 
-  const fetchDatingProfile = async () => {
-    // Mock profile - in real app, fetch from API
-    setDatingProfile({
-      ...currentUser,
-      age: 25,
-      occupation: "Software Developer",
-      interests: ["Travel", "Music", "Photography"],
-      bio: "Love exploring new cultures and meeting interesting people!",
-      lookingFor: "Friendship and maybe something more",
-      photos: [currentUser.avatar]
-    })
+  useEffect(() => {
+    if (!showTerms) {
+      fetchPotentialMatches()
+      fetchMatches()
+      fetchLikes()
+    }
+  }, [showTerms])
+
+  const checkExistingProfile = async () => {
+    try {
+      const response = await fetch(`/api/dating?action=getProfile&userId=${currentUser.id}`)
+      const data = await response.json()
+      
+      if (data.profile) {
+        setDatingProfile(data.profile)
+        setShowTerms(false)
+        setWantsDating(true)
+        setTermsAccepted(true)
+      }
+    } catch (error) {
+      console.error("Failed to check existing profile:", error)
+    }
   }
 
   const fetchPotentialMatches = async () => {
-    // Mock data - in real app, fetch from API based on preferences
-    setPotentialMatches([
-      {
-        id: "match1",
-        name: "Emma Wilson",
-        age: 23,
-        occupation: "Artist",
-        bio: "Passionate about art and traveling the world 🎨✈️",
-        interests: ["Travel", "Photography", "Coffee"],
-        photos: ["/placeholder.svg"],
-        distance: 5,
-        language: "English",
-        region: "United States"
-      },
-      {
-        id: "match2",
-        name: "Sophie Chen",
-        age: 27,
-        occupation: "Teacher",
-        bio: "Love learning new languages and cultures 📚🌍",
-        interests: ["Reading", "Music", "Travel"],
-        photos: ["/placeholder.svg"],
-        distance: 12,
-        language: "Chinese",
-        region: "China"
-      },
-      {
-        id: "match3",
-        name: "Isabella Rodriguez",
-        age: 24,
-        occupation: "Photographer",
-        bio: "Capturing beautiful moments around the world 📸",
-        interests: ["Photography", "Travel", "Coffee"],
-        photos: ["/placeholder.svg"],
-        distance: 8,
-        language: "Spanish",
-        region: "Spain"
-      }
-    ])
+    try {
+      const response = await fetch(`/api/dating?action=getPotentialMatches&userId=${currentUser.id}`)
+      const data = await response.json()
+      setPotentialMatches(data.matches || [])
+      setCurrentMatchIndex(0)
+    } catch (error) {
+      console.error("Failed to fetch potential matches:", error)
+    }
   }
 
   const fetchMatches = async () => {
-    // Mock data
-    setMatches([
-      {
-        id: "match1",
-        name: "Emma Wilson",
-        avatar: "/placeholder.svg",
-        lastMessage: "Hi there! How's your day going?",
-        timestamp: "2 hours ago",
-        unread: true
-      }
-    ])
+    try {
+      const response = await fetch(`/api/dating?action=getMatches&userId=${currentUser.id}`)
+      const data = await response.json()
+      setMatches(data.matches || [])
+    } catch (error) {
+      console.error("Failed to fetch matches:", error)
+    }
   }
 
   const fetchLikes = async () => {
-    // Mock data
-    setReceivedLikes([
-      {
-        id: "like1",
-        name: "Alex Johnson",
-        avatar: "/placeholder.svg",
-        age: 26,
-        occupation: "Designer"
-      }
-    ])
+    try {
+      const response = await fetch(`/api/dating?action=getLikes&userId=${currentUser.id}`)
+      const data = await response.json()
+      setReceivedLikes(data.likes || [])
+    } catch (error) {
+      console.error("Failed to fetch likes:", error)
+    }
   }
 
-  const handleLike = async (matchId) => {
+  const createDatingProfile = async () => {
     try {
-      // In real app, send to API
-      const likedUser = potentialMatches[currentMatchIndex]
-      setSentLikes(prev => [...prev, likedUser])
+      setLoading(true)
+      const profileData = {
+        age: 25, // You could make this configurable
+        occupation: currentUser.occupation || "Not specified",
+        bio: currentUser.bio || "Looking to meet new people and learn languages!",
+        interests: ["Travel", "Languages", "Meeting new people"],
+        lookingFor: "Friendship and language exchange",
+        photos: [currentUser.avatar || "/placeholder.svg"],
+        wantsDating: true
+      }
+
+      const response = await fetch("/api/dating", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "createProfile",
+          userId: currentUser.id,
+          profileData
+        })
+      })
+
+      const data = await response.json()
+      setDatingProfile(data.profile)
+      setShowTerms(false)
+    } catch (error) {
+      console.error("Failed to create dating profile:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleLike = async (match) => {
+    try {
+      const response = await fetch("/api/dating", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "sendLike",
+          fromUserId: currentUser.id,
+          toUserId: match.userId
+        })
+      })
+
+      const data = await response.json()
       
-      // Check if it's a mutual like (match)
-      // In real app, this would be handled by the backend
-      if (Math.random() > 0.5) { // 50% chance of mutual like for demo
-        setMatches(prev => [...prev, {
-          id: likedUser.id,
-          name: likedUser.name,
-          avatar: likedUser.photos[0],
-          lastMessage: "You matched! Say hello 👋",
-          timestamp: "Just now",
-          unread: true
-        }])
-        alert(`It's a match with ${likedUser.name}! 🎉`)
+      if (data.match) {
+        // It's a match!
+        alert(`It's a match with ${match.user.name}! 🎉`)
+        fetchMatches() // Refresh matches
       }
       
       nextMatch()
@@ -171,8 +175,32 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
     if (currentMatchIndex < potentialMatches.length - 1) {
       setCurrentMatchIndex(prev => prev + 1)
     } else {
-      // No more potential matches
-      setCurrentMatchIndex(0)
+      // Refresh potential matches or show no more profiles message
+      fetchPotentialMatches()
+    }
+  }
+
+  const handleRespondToLike = async (like, response) => {
+    try {
+      await fetch("/api/dating", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "respondToLike",
+          likeId: like.id,
+          response,
+          currentUserId: currentUser.id
+        })
+      })
+
+      if (response === "accept") {
+        alert(`It's a match with ${like.user.name}! 🎉`)
+        fetchMatches()
+      }
+      
+      fetchLikes() // Refresh likes
+    } catch (error) {
+      console.error("Failed to respond to like:", error)
     }
   }
 
@@ -188,10 +216,12 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-center mb-6">
-              <Heart className="h-16 w-16 mx-auto text-pink-500 mb-4" />
+              <svg className="h-16 w-16 mx-auto text-pink-500 mb-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
               <h3 className="text-lg font-semibold mb-2">Are you looking for dating?</h3>
               <p className="text-sm text-gray-600">
-                This mode helps you find meaningful romantic connections
+                This mode helps you find meaningful romantic connections through language learning
               </p>
             </div>
 
@@ -222,6 +252,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                     <li>• You must be 18+ to use dating features</li>
                     <li>• Report any suspicious activity</li>
                     <li>• Your safety is our priority</li>
+                    <li>• Focus on language learning and cultural exchange</li>
                   </ul>
                 </div>
 
@@ -245,16 +276,16 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   <Button
                     onClick={() => {
                       if (wantsDating && termsAccepted) {
-                        setShowTerms(false)
+                        createDatingProfile()
                       } else if (!wantsDating) {
                         alert("Please use the 'Find Friends' feature instead!")
                         onBack()
                       }
                     }}
-                    disabled={wantsDating && !termsAccepted}
+                    disabled={(wantsDating && !termsAccepted) || loading}
                     className="flex-1"
                   >
-                    Continue
+                    {loading ? "Creating Profile..." : "Continue"}
                   </Button>
                 </div>
               </>
@@ -277,7 +308,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
             </Button>
             <div>
               <h1 className="text-2xl font-bold">Dating Mode</h1>
-              <p className="text-gray-600">Find meaningful connections</p>
+              <p className="text-gray-600">Find meaningful connections through language learning</p>
             </div>
           </div>
           <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
@@ -345,12 +376,12 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   {/* Photo */}
                   <div className="relative h-96 bg-gradient-to-br from-pink-200 to-purple-200 rounded-t-lg">
                     <img
-                      src={currentMatch.photos[0] || "/placeholder.svg"}
-                      alt={currentMatch.name}
+                      src={currentMatch.user?.avatar || "/placeholder.svg"}
+                      alt={currentMatch.user?.name}
                       className="w-full h-full object-cover rounded-t-lg"
                     />
                     <div className="absolute bottom-4 left-4 text-white">
-                      <h3 className="text-2xl font-bold">{currentMatch.name}, {currentMatch.age}</h3>
+                      <h3 className="text-2xl font-bold">{currentMatch.user?.name}, {currentMatch.age}</h3>
                       <p className="text-sm opacity-90">{currentMatch.occupation}</p>
                     </div>
                   </div>
@@ -359,15 +390,15 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   <div className="p-6 space-y-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <MapPin className="h-4 w-4" />
-                      <span>{currentMatch.distance} km away</span>
+                      <span>{currentMatch.user?.region}</span>
                       <Globe className="h-4 w-4 ml-2" />
-                      <span>{currentMatch.language}</span>
+                      <span>{currentMatch.user?.language}</span>
                     </div>
 
                     <p className="text-gray-700">{currentMatch.bio}</p>
 
                     <div className="flex flex-wrap gap-2">
-                      {currentMatch.interests.map((interest) => (
+                      {currentMatch.interests?.map((interest) => (
                         <Badge key={interest} variant="secondary" className="text-xs">
                           {interest}
                         </Badge>
@@ -386,7 +417,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                       </Button>
                       <Button
                         size="lg"
-                        onClick={() => handleLike(currentMatch.id)}
+                        onClick={() => handleLike(currentMatch)}
                         className="rounded-full w-16 h-16 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600"
                       >
                         <Heart className="h-8 w-8" />
@@ -401,6 +432,9 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   <Heart className="h-16 w-16 mx-auto text-gray-400 mb-4" />
                   <h3 className="text-xl font-semibold mb-2">No more profiles</h3>
                   <p className="text-gray-600">Check back later for new matches!</p>
+                  <Button onClick={fetchPotentialMatches} className="mt-4">
+                    Refresh
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -419,25 +453,36 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
               </Card>
             ) : (
               matches.map((match) => (
-                <Card key={match.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                <Card key={match.matchId} className="cursor-pointer hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={match.avatar || "/placeholder.svg"} alt={match.name} />
-                        <AvatarFallback>{match.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={match.partner?.avatar || "/placeholder.svg"} alt={match.partner?.name} />
+                        <AvatarFallback>{match.partner?.name?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <h3 className="font-semibold">{match.name}</h3>
-                        <p className="text-sm text-gray-600">{match.lastMessage}</p>
-                        <p className="text-xs text-gray-400">{match.timestamp}</p>
+                        <h3 className="font-semibold">{match.partner?.name}</h3>
+                        <p className="text-sm text-gray-600">{match.partnerProfile?.bio}</p>
+                        <p className="text-xs text-gray-400">
+                          Matched {new Date(match.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onStartChat?.(match)}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onStartChat?.(match.partner)}
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {/* Start video call */}}
+                        >
+                          <Video className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -462,18 +507,27 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={like.avatar || "/placeholder.svg"} alt={like.name} />
-                        <AvatarFallback>{like.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={like.user?.avatar || "/placeholder.svg"} alt={like.user?.name} />
+                        <AvatarFallback>{like.user?.name?.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <h3 className="font-semibold">{like.name}, {like.age}</h3>
-                        <p className="text-sm text-gray-600">{like.occupation}</p>
+                        <h3 className="font-semibold">{like.user?.name}, {like.profile?.age}</h3>
+                        <p className="text-sm text-gray-600">{like.profile?.occupation}</p>
+                        <p className="text-xs text-gray-400">{like.user?.region}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleRespondToLike(like, "reject")}
+                        >
                           <X className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" className="bg-pink-500 hover:bg-pink-600">
+                        <Button 
+                          size="sm" 
+                          className="bg-pink-500 hover:bg-pink-600"
+                          onClick={() => handleRespondToLike(like, "accept")}
+                        >
                           <Heart className="h-4 w-4" />
                         </Button>
                       </div>

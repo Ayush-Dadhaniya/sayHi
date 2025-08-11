@@ -26,101 +26,169 @@ import {
 } from "lucide-react"
 
 const LANGUAGES = [
-  { id: 1, name: "Spanish", flag: "🇪🇸", difficulty: "Beginner", color: "from-red-500 to-yellow-500" },
-  { id: 2, name: "French", flag: "🇫🇷", difficulty: "Beginner", color: "from-blue-500 to-white" },
-  { id: 3, name: "German", flag: "🇩🇪", difficulty: "Intermediate", color: "from-black to-red-500" },
-  { id: 4, name: "Japanese", flag: "🇯🇵", difficulty: "Advanced", color: "from-red-600 to-white" },
-  { id: 5, name: "Chinese", flag: "🇨🇳", difficulty: "Advanced", color: "from-red-600 to-yellow-400" },
-  { id: 6, name: "Italian", flag: "🇮🇹", difficulty: "Beginner", color: "from-green-500 to-red-500" },
+  { id: 1, name: "spanish", displayName: "Spanish", flag: "🇪🇸", difficulty: "Beginner", color: "from-red-500 to-yellow-500" },
+  { id: 2, name: "french", displayName: "French", flag: "🇫🇷", difficulty: "Beginner", color: "from-blue-500 to-white" },
+  { id: 3, name: "german", displayName: "German", flag: "🇩🇪", difficulty: "Intermediate", color: "from-black to-red-500" },
+  { id: 4, name: "japanese", displayName: "Japanese", flag: "🇯🇵", difficulty: "Advanced", color: "from-red-600 to-white" },
+  { id: 5, name: "chinese", displayName: "Chinese", flag: "🇨🇳", difficulty: "Advanced", color: "from-red-600 to-yellow-400" },
+  { id: 6, name: "italian", displayName: "Italian", flag: "🇮🇹", difficulty: "Beginner", color: "from-green-500 to-red-500" },
 ]
 
-const LESSON_TYPES = [
-  { id: 1, name: "Basics", icon: Circle, lessons: 5, completed: 3 },
-  { id: 2, name: "Food", icon: Circle, lessons: 4, completed: 2 },
-  { id: 3, name: "Family", icon: Circle, lessons: 6, completed: 0 },
-  { id: 4, name: "Colors", icon: Circle, lessons: 3, completed: 0 },
-  { id: 5, name: "Numbers", icon: Circle, lessons: 4, completed: 0 },
-]
-
-const SAMPLE_QUESTIONS = [
-  {
-    type: "translate",
-    question: "Translate: 'Hello, how are you?'",
-    options: ["Hola, ¿cómo estás?", "Adiós, gracias", "Por favor, ayuda", "No entiendo"],
-    correct: 0,
-    audio: true
-  },
-  {
-    type: "multiple_choice",
-    question: "What does 'Gracias' mean?",
-    options: ["Hello", "Goodbye", "Thank you", "Please"],
-    correct: 2,
-    audio: true
-  },
-  {
-    type: "fill_blank",
-    question: "Complete: 'Me _____ Juan' (My name is Juan)",
-    options: ["llamo", "como", "soy", "tengo"],
-    correct: 0,
-    audio: false
-  }
+const COURSE_TYPES = [
+  { id: "basics", name: "Basics", icon: Circle, totalLessons: 3 },
+  { id: "food", name: "Food", icon: Circle, totalLessons: 2 },
+  { id: "family", name: "Family", icon: Circle, totalLessons: 6 },
+  { id: "colors", name: "Colors", icon: Circle, totalLessons: 3 },
+  { id: "numbers", name: "Numbers", icon: Circle, totalLessons: 4 },
 ]
 
 export default function LanguageLearning({ currentUser, onBack }) {
-  const [activeView, setActiveView] = useState("languages") // languages, course, lesson, practice
+  const [activeView, setActiveView] = useState("languages") // languages, course, lesson, practice, results
   const [selectedLanguage, setSelectedLanguage] = useState(null)
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [userAnswer, setUserAnswer] = useState("")
   const [showResult, setShowResult] = useState(false)
   const [score, setScore] = useState(0)
-  const [streak, setStreak] = useState(7)
-  const [hearts, setHearts] = useState(5)
-  const [xp, setXp] = useState(1250)
-  const [level, setLevel] = useState(5)
+  const [answers, setAnswers] = useState([])
+  const [lessons, setLessons] = useState([])
+  const [progress, setProgress] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (selectedLanguage) {
+      fetchProgress()
+    }
+  }, [selectedLanguage])
+
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch(`/api/language-learning?action=getProgress&userId=${currentUser.id}&language=${selectedLanguage.name}`)
+      const data = await response.json()
+      setProgress(data.progress)
+    } catch (error) {
+      console.error("Failed to fetch progress:", error)
+    }
+  }
+
+  const fetchLessons = async (course) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/language-learning?action=getLessons&language=${selectedLanguage.name}&course=${course.id}`)
+      const data = await response.json()
+      setLessons(data.lessons || [])
+    } catch (error) {
+      console.error("Failed to fetch lessons:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSelectLanguage = (language) => {
     setSelectedLanguage(language)
     setActiveView("course")
   }
 
-  const handleStartLesson = (course) => {
+  const handleStartLesson = async (course) => {
     setSelectedCourse(course)
+    await fetchLessons(course)
     setActiveView("lesson")
     setCurrentQuestion(0)
     setScore(0)
+    setAnswers([])
     setShowResult(false)
     setUserAnswer("")
   }
 
-  const handleAnswer = (answerIndex) => {
-    const question = SAMPLE_QUESTIONS[currentQuestion]
+  const handleAnswer = async (answerIndex) => {
+    const question = lessons[currentQuestion]
+    const isCorrect = answerIndex === question.correct
+    const newAnswers = [...answers, { questionId: question.id, answer: answerIndex, correct: isCorrect }]
+    
+    setAnswers(newAnswers)
     setShowResult(true)
     
-    if (answerIndex === question.correct) {
-      setScore(prev => prev + 10)
-      setXp(prev => prev + 10)
+    if (isCorrect) {
+      setScore(prev => prev + 1)
     } else {
-      setHearts(prev => Math.max(0, prev - 1))
+      // Use a heart for wrong answer
+      await useHeart()
     }
 
     setTimeout(() => {
-      if (currentQuestion < SAMPLE_QUESTIONS.length - 1) {
+      if (currentQuestion < lessons.length - 1) {
         setCurrentQuestion(prev => prev + 1)
         setShowResult(false)
         setUserAnswer("")
       } else {
-        // Lesson complete
-        setActiveView("practice")
+        // Lesson complete - save progress
+        completeLesson()
       }
     }, 2000)
   }
 
+  const useHeart = async () => {
+    try {
+      await fetch("/api/language-learning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "useHeart",
+          userId: currentUser.id,
+          language: selectedLanguage.name
+        })
+      })
+      // Refresh progress to update heart count
+      await fetchProgress()
+    } catch (error) {
+      console.error("Failed to use heart:", error)
+    }
+  }
+
+  const completeLesson = async () => {
+    try {
+      // Save test results
+      await fetch("/api/language-learning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "saveTest",
+          userId: currentUser.id,
+          language: selectedLanguage.name,
+          course: selectedCourse.id,
+          answers,
+          score,
+          totalQuestions: lessons.length
+        })
+      })
+
+      // Update progress
+      await fetch("/api/language-learning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateProgress",
+          userId: currentUser.id,
+          language: selectedLanguage.name,
+          course: selectedCourse.id,
+          score,
+          totalQuestions: lessons.length,
+          completedLesson: true
+        })
+      })
+
+      await fetchProgress()
+      setActiveView("results")
+    } catch (error) {
+      console.error("Failed to save lesson progress:", error)
+    }
+  }
+
   const playAudio = (text) => {
     // Use Web Speech API for text-to-speech
-    if ('speechSynthesis' in window) {
+    if ('speechSynthesis' in window && text) {
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = selectedLanguage?.name === "Spanish" ? "es-ES" : "en-US"
+      utterance.lang = selectedLanguage?.name === "spanish" ? "es-ES" : "en-US"
       speechSynthesis.speak(utterance)
     }
   }
@@ -151,7 +219,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <div className="text-4xl mb-2">{language.flag}</div>
-                    <h3 className="text-xl font-semibold mb-1">{language.name}</h3>
+                    <h3 className="text-xl font-semibold mb-1">{language.displayName}</h3>
                     <Badge variant="outline" className="mb-4">{language.difficulty}</Badge>
                     <div className={`w-full h-2 bg-gradient-to-r ${language.color} rounded-full opacity-20`}></div>
                   </div>
@@ -177,19 +245,19 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 Back
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">{selectedLanguage?.name} Course</h1>
-                <p className="text-gray-600">Level {level} • {xp} XP</p>
+                <h1 className="text-2xl font-bold">{selectedLanguage?.displayName} Course</h1>
+                <p className="text-gray-600">Level {progress?.level || 1} • {progress?.xp || 0} XP</p>
               </div>
             </div>
             
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Flame className="h-5 w-5 text-orange-500" />
-                <span className="font-semibold">{streak}</span>
+                <span className="font-semibold">{progress?.streak || 0}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500" />
-                <span className="font-semibold">{hearts}</span>
+                <span className="font-semibold">{progress?.hearts || 5}</span>
               </div>
             </div>
           </div>
@@ -202,9 +270,11 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">Course Progress</h3>
-                    <span className="text-sm text-gray-500">45% Complete</span>
+                    <span className="text-sm text-gray-500">
+                      {progress ? Math.round(calculateOverallProgress()) : 0}% Complete
+                    </span>
                   </div>
-                  <Progress value={45} className="h-3" />
+                  <Progress value={progress ? calculateOverallProgress() : 0} className="h-3" />
                 </div>
               </div>
             </CardContent>
@@ -212,9 +282,10 @@ export default function LanguageLearning({ currentUser, onBack }) {
 
           {/* Lessons */}
           <div className="space-y-4">
-            {LESSON_TYPES.map((course, index) => {
-              const IconComponent = course.completed === course.lessons ? CheckCircle : Circle
-              const isUnlocked = index === 0 || LESSON_TYPES[index - 1].completed > 0
+            {COURSE_TYPES.map((course, index) => {
+              const courseProgress = progress?.courses?.[course.id] || { completed: 0, total: course.totalLessons }
+              const IconComponent = courseProgress.completed === courseProgress.total ? CheckCircle : Circle
+              const isUnlocked = index === 0 || (progress?.courses && Object.keys(progress.courses).length > index - 1)
               
               return (
                 <Card 
@@ -224,15 +295,15 @@ export default function LanguageLearning({ currentUser, onBack }) {
                       ? "hover:shadow-md" 
                       : "opacity-50 cursor-not-allowed"
                   }`}
-                  onClick={() => isUnlocked && handleStartLesson(course)}
+                  onClick={() => isUnlocked && !loading && handleStartLesson(course)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center gap-4">
                       <IconComponent 
                         className={`h-8 w-8 ${
-                          course.completed === course.lessons 
+                          courseProgress.completed === courseProgress.total 
                             ? "text-green-500" 
-                            : course.completed > 0 
+                            : courseProgress.completed > 0 
                               ? "text-blue-500" 
                               : "text-gray-400"
                         }`} 
@@ -240,15 +311,18 @@ export default function LanguageLearning({ currentUser, onBack }) {
                       <div className="flex-1">
                         <h3 className="text-lg font-semibold">{course.name}</h3>
                         <p className="text-sm text-gray-600">
-                          {course.completed}/{course.lessons} lessons completed
+                          {courseProgress.completed}/{courseProgress.total} lessons completed
                         </p>
                         <Progress 
-                          value={(course.completed / course.lessons) * 100} 
+                          value={(courseProgress.completed / courseProgress.total) * 100} 
                           className="h-2 mt-2" 
                         />
                       </div>
-                      {course.completed === course.lessons && (
+                      {courseProgress.completed === courseProgress.total && (
                         <Trophy className="h-6 w-6 text-yellow-500" />
+                      )}
+                      {loading && (
+                        <div className="text-sm text-gray-500">Loading...</div>
                       )}
                     </div>
                   </CardContent>
@@ -261,42 +335,72 @@ export default function LanguageLearning({ currentUser, onBack }) {
     )
   }
 
-  // Lesson/Practice View
-  if (activeView === "lesson" || activeView === "practice") {
-    const question = SAMPLE_QUESTIONS[currentQuestion]
-    
-    if (activeView === "practice") {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4">
-          <div className="max-w-2xl mx-auto">
-            <Card className="text-center p-8">
-              <CardContent>
-                <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-4" />
-                <h2 className="text-2xl font-bold mb-2">Lesson Complete!</h2>
-                <p className="text-gray-600 mb-4">You earned {score} XP</p>
-                <div className="space-y-2 mb-6">
-                  <Button 
-                    onClick={() => setActiveView("course")} 
-                    className="w-full"
-                  >
-                    Continue Learning
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleStartLesson(selectedCourse)} 
-                    className="w-full"
-                  >
-                    <RotateCcw className="h-4 w-4 mr-2" />
-                    Practice Again
-                  </Button>
+  // Results View
+  if (activeView === "results") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="text-center p-8">
+            <CardContent>
+              <Trophy className="h-16 w-16 mx-auto text-yellow-500 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Lesson Complete!</h2>
+              <p className="text-gray-600 mb-2">You got {score} out of {lessons.length} correct</p>
+              <p className="text-gray-600 mb-4">You earned {score * 10} XP</p>
+              
+              {/* Progress stats */}
+              <div className="grid grid-cols-3 gap-4 mb-6 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">{progress?.xp || 0}</div>
+                  <div className="text-sm text-gray-600">Total XP</div>
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{progress?.level || 1}</div>
+                  <div className="text-sm text-gray-600">Level</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-orange-600">{progress?.streak || 0}</div>
+                  <div className="text-sm text-gray-600">Day Streak</div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Button 
+                  onClick={() => setActiveView("course")} 
+                  className="w-full"
+                >
+                  Continue Learning
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleStartLesson(selectedCourse)} 
+                  className="w-full"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Practice Again
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  // Lesson/Practice View
+  if (activeView === "lesson") {
+    if (lessons.length === 0) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p>Loading lesson...</p>
           </div>
         </div>
       )
     }
 
+    const question = lessons[currentQuestion]
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4">
         <div className="max-w-2xl mx-auto">
@@ -307,10 +411,10 @@ export default function LanguageLearning({ currentUser, onBack }) {
               Exit
             </Button>
             <div className="flex items-center gap-4">
-              <Progress value={((currentQuestion + 1) / SAMPLE_QUESTIONS.length) * 100} className="w-32" />
+              <Progress value={((currentQuestion + 1) / lessons.length) * 100} className="w-32" />
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-red-500" />
-                <span>{hearts}</span>
+                <span>{progress?.hearts || 5}</span>
               </div>
             </div>
           </div>
@@ -323,7 +427,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 {question.audio && (
                   <Button 
                     variant="outline" 
-                    onClick={() => playAudio(question.options[question.correct])}
+                    onClick={() => playAudio(question.audio)}
                     className="mb-4"
                   >
                     <Volume2 className="h-4 w-4 mr-2" />
@@ -355,7 +459,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
               {showResult && (
                 <div className="mt-6 text-center">
                   <p className="text-lg font-semibold">
-                    {userAnswer === question.correct ? "Correct! +10 XP" : "Keep practicing!"}
+                    {answers[answers.length - 1]?.correct ? "Correct! +10 XP" : "Keep practicing!"}
                   </p>
                 </div>
               )}
@@ -364,5 +468,20 @@ export default function LanguageLearning({ currentUser, onBack }) {
         </div>
       </div>
     )
+  }
+
+  const calculateOverallProgress = () => {
+    if (!progress?.courses) return 0
+    
+    let totalCompleted = 0
+    let totalLessons = 0
+    
+    COURSE_TYPES.forEach(courseType => {
+      const courseProgress = progress.courses[courseType.id] || { completed: 0, total: courseType.totalLessons }
+      totalCompleted += courseProgress.completed
+      totalLessons += courseProgress.total
+    })
+    
+    return totalLessons > 0 ? (totalCompleted / totalLessons) * 100 : 0
   }
 }
