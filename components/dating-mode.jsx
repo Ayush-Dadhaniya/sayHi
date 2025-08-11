@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -7,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { 
-  Heart, 
-  X, 
-  Star, 
-  MapPin, 
-  Globe, 
+import {
+  Heart,
+  X,
+  Star,
+  MapPin,
+  Globe,
   Calendar,
   Coffee,
   Music,
@@ -65,7 +64,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
     try {
       const response = await fetch(`/api/dating?action=getProfile&userId=${currentUser.id}`)
       const data = await response.json()
-      
+
       if (data.profile) {
         setDatingProfile(data.profile)
         setShowTerms(false)
@@ -154,13 +153,13 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
       })
 
       const data = await response.json()
-      
+
       if (data.match) {
         // It's a match!
         alert(`It's a match with ${match.user.name}! 🎉`)
         fetchMatches() // Refresh matches
       }
-      
+
       nextMatch()
     } catch (error) {
       console.error("Failed to like user:", error)
@@ -197,7 +196,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
         alert(`It's a match with ${like.user.name}! 🎉`)
         fetchMatches()
       }
-      
+
       fetchLikes() // Refresh likes
     } catch (error) {
       console.error("Failed to respond to like:", error)
@@ -516,15 +515,15 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                         <p className="text-xs text-gray-400">{like.user?.region}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleRespondToLike(like, "reject")}
                         >
                           <X className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           className="bg-pink-500 hover:bg-pink-600"
                           onClick={() => handleRespondToLike(like, "accept")}
                         >

@@ -53,6 +53,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
   const [answers, setAnswers] = useState([])
   const [lessons, setLessons] = useState([])
   const [progress, setProgress] = useState(null)
+  const [userScores, setUserScores] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -63,9 +64,16 @@ export default function LanguageLearning({ currentUser, onBack }) {
 
   const fetchProgress = async () => {
     try {
-      const response = await fetch(`/api/language-learning?action=getProgress&userId=${currentUser.id}&language=${selectedLanguage.name}`)
-      const data = await response.json()
-      setProgress(data.progress)
+      const [progressResponse, scoresResponse] = await Promise.all([
+        fetch(`/api/language-learning?action=getProgress&userId=${currentUser.id}&language=${selectedLanguage.name}`),
+        fetch(`/api/language-learning?action=getUserScores&userId=${currentUser.id}&language=${selectedLanguage.name}`)
+      ])
+      
+      const progressData = await progressResponse.json()
+      const scoresData = await scoresResponse.json()
+      
+      setProgress(progressData.progress)
+      setUserScores(scoresData.scores)
     } catch (error) {
       console.error("Failed to fetch progress:", error)
     }
@@ -100,10 +108,24 @@ export default function LanguageLearning({ currentUser, onBack }) {
     setUserAnswer("")
   }
 
-  const handleAnswer = async (answerIndex) => {
+  const handleAnswer = async (answerIndex, writtenAnswer = null) => {
     const question = lessons[currentQuestion]
-    const isCorrect = answerIndex === question.correct
-    const newAnswers = [...answers, { questionId: question.id, answer: answerIndex, correct: isCorrect }]
+    let isCorrect = false
+    
+    if (question.type === "writing") {
+      // For writing questions, check against correct answer
+      isCorrect = writtenAnswer?.toLowerCase().trim() === question.correctAnswer?.toLowerCase().trim()
+    } else {
+      // For multiple choice questions
+      isCorrect = answerIndex === question.correct
+    }
+    
+    const newAnswers = [...answers, { 
+      questionId: question.id, 
+      answer: writtenAnswer || answerIndex, 
+      correct: isCorrect,
+      type: question.type
+    }]
     
     setAnswers(newAnswers)
     setShowResult(true)
@@ -202,8 +224,39 @@ export default function LanguageLearning({ currentUser, onBack }) {
   const playAudio = (text) => {
     // Use Web Speech API for text-to-speech
     if ('speechSynthesis' in window && text) {
+      // Stop any current speech
+      speechSynthesis.cancel()
+      
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = selectedLanguage?.name === "spanish" ? "es-ES" : "en-US"
+      
+      // Set language based on selected language
+      switch(selectedLanguage?.name) {
+        case "spanish":
+          utterance.lang = "es-ES"
+          break
+        case "french":
+          utterance.lang = "fr-FR"
+          break
+        case "german":
+          utterance.lang = "de-DE"
+          break
+        case "italian":
+          utterance.lang = "it-IT"
+          break
+        case "chinese":
+          utterance.lang = "zh-CN"
+          break
+        case "japanese":
+          utterance.lang = "ja-JP"
+          break
+        default:
+          utterance.lang = "en-US"
+      }
+      
+      utterance.rate = 0.8 // Slower rate for learning
+      utterance.pitch = 1
+      utterance.volume = 1
+      
       speechSynthesis.speak(utterance)
     }
   }
@@ -294,6 +347,33 @@ export default function LanguageLearning({ currentUser, onBack }) {
               </div>
             </CardContent>
           </Card>
+
+          {/* User Stats */}
+          {userScores && (
+            <Card className="mb-6">
+              <CardContent className="p-6">
+                <h3 className="font-semibold mb-4">Your Performance</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-blue-600">{userScores.testsCompleted || 0}</div>
+                    <div className="text-sm text-gray-600">Tests Completed</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">{userScores.averageScore || 0}%</div>
+                    <div className="text-sm text-gray-600">Average Score</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-yellow-600">{userScores.bestScore || 0}%</div>
+                    <div className="text-sm text-gray-600">Best Score</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-purple-600">{userScores.totalScore || 0}</div>
+                    <div className="text-sm text-gray-600">Total Points</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Lessons */}
           <div className="space-y-4">
@@ -451,25 +531,55 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 )}
               </div>
 
-              <div className="space-y-3">
-                {question.options.map((option, index) => (
-                  <Button
-                    key={index}
-                    variant="outline"
-                    className={`w-full text-left justify-start p-4 h-auto ${
-                      showResult
-                        ? index === question.correct
-                          ? "bg-green-100 border-green-500"
-                          : "bg-red-100 border-red-500"
-                        : ""
-                    }`}
-                    onClick={() => !showResult && handleAnswer(index)}
+              {question.type === "writing" ? (
+                <div className="space-y-3">
+                  <Input
+                    type="text"
+                    placeholder="Type your answer here..."
+                    value={userAnswer}
+                    onChange={(e) => setUserAnswer(e.target.value)}
                     disabled={showResult}
+                    className="w-full p-4 text-lg"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && userAnswer.trim() && !showResult) {
+                        handleAnswer(null, userAnswer)
+                      }
+                    }}
+                  />
+                  <Button
+                    onClick={() => handleAnswer(null, userAnswer)}
+                    disabled={showResult || !userAnswer.trim()}
+                    className="w-full"
                   >
-                    {option}
+                    Submit Answer
                   </Button>
-                ))}
-              </div>
+                  {showResult && (
+                    <div className="p-4 rounded-lg bg-gray-50">
+                      <p className="text-sm text-gray-600">Correct answer: <strong>{question.correctAnswer}</strong></p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {question.options.map((option, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      className={`w-full text-left justify-start p-4 h-auto ${
+                        showResult
+                          ? index === question.correct
+                            ? "bg-green-100 border-green-500"
+                            : "bg-red-100 border-red-500"
+                          : ""
+                      }`}
+                      onClick={() => !showResult && handleAnswer(index)}
+                      disabled={showResult}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              )}
 
               {showResult && (
                 <div className="mt-6 text-center">
