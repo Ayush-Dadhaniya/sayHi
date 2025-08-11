@@ -43,6 +43,9 @@ import LanguageLearning from "@/components/language-learning"
 import AdminDashboard from "@/components/admin-dashboard"
 import TeamsDashboard from "@/components/teams-dashboard"
 import SubscriptionPlans from "@/components/subscription-plans"
+import GamificationDashboard from "@/components/gamification-dashboard"
+import SocialFeatures from "@/components/social-features"
+import PremiumFeatures from "@/components/premium-features"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import React from "react"
 import ChatInterface from "@/components/chat-interface"
@@ -105,6 +108,9 @@ export default function Dashboard({ currentUser, onLogout }) {
   const [showAdminDashboard, setShowAdminDashboard] = useState(false)
   const [showTeamsDashboard, setShowTeamsDashboard] = useState(false)
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false)
+  const [showGamification, setShowGamification] = useState(false)
+  const [showSocialFeatures, setShowSocialFeatures] = useState(false)
+  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false)
   const fileInputRef = React.useRef(null)
 
   // Handle starting a chat
@@ -153,6 +159,21 @@ export default function Dashboard({ currentUser, onLogout }) {
   // Handle subscription plans
   const handleBackFromPlans = () => {
     setShowSubscriptionPlans(false)
+  }
+
+  // Handle gamification
+  const handleBackFromGamification = () => {
+    setShowGamification(false)
+  }
+
+  // Handle social features
+  const handleBackFromSocial = () => {
+    setShowSocialFeatures(false)
+  }
+
+  // Handle premium features
+  const handleBackFromPremium = () => {
+    setShowPremiumFeatures(false)
   }
 
   // Fetch friends count
@@ -300,6 +321,21 @@ export default function Dashboard({ currentUser, onLogout }) {
   // Render subscription plans if active
   if (showSubscriptionPlans) {
     return <SubscriptionPlans currentUser={currentUser} onBack={handleBackFromPlans} />
+  }
+
+  // Render gamification if active
+  if (showGamification) {
+    return <GamificationDashboard currentUser={currentUser} onBack={handleBackFromGamification} />
+  }
+
+  // Render social features if active
+  if (showSocialFeatures) {
+    return <SocialFeatures currentUser={currentUser} onBack={handleBackFromSocial} />
+  }
+
+  // Render premium features if active
+  if (showPremiumFeatures) {
+    return <PremiumFeatures currentUser={currentUser} onBack={handleBackFromPremium} />
   }
 
   return (
@@ -473,6 +509,33 @@ export default function Dashboard({ currentUser, onLogout }) {
                 >
                   <Crown className="h-4 w-4 mr-2" />
                   Plans
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setShowGamification(true)}
+                >
+                  <Trophy className="h-4 w-4 mr-2" />
+                  Achievements
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setShowSocialFeatures(true)}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Social Learning
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setShowPremiumFeatures(true)}
+                >
+                  <Star className="h-4 w-4 mr-2" />
+                  Premium Features
                 </Button>
                 {currentUser.isAdmin && (
                   <Button 

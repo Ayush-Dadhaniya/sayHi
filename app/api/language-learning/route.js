@@ -18,14 +18,14 @@ export async function GET(req) {
     const progress = await progressCollection.findOne({ userId, language })
     const userScore = await userScoresCollection.findOne({ userId, language })
 
-    const progressData = progress || { 
-      userId, 
-      language, 
-      courses: {}, 
-      xp: 0, 
-      level: 1, 
-      streak: 0, 
-      hearts: 5 
+    const progressData = progress || {
+      userId,
+      language,
+      courses: {},
+      xp: 0,
+      level: 1,
+      streak: 0,
+      hearts: 5
     }
 
     if (userScore) {
@@ -39,15 +39,15 @@ export async function GET(req) {
 
   if (action === "getLessons") {
     // Get lessons from database
-    const lessons = await lessonsCollection.find({ 
-      language, 
-      course 
+    const lessons = await lessonsCollection.find({
+      language,
+      course
     }).toArray()
 
     // Filter lessons that have valid questions
-    const validLessons = lessons.filter(lesson => 
-      lesson.questions && 
-      Array.isArray(lesson.questions) && 
+    const validLessons = lessons.filter(lesson =>
+      lesson.questions &&
+      Array.isArray(lesson.questions) &&
       lesson.questions.length > 0
     )
 
@@ -175,6 +175,27 @@ export async function POST(req) {
 
       // Update user scores
       await updateUserScores(userScoresCollection, userId, language, score, totalQuestions)
+
+      // Update gamification
+      await fetch("/api/gamification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updateStreak",
+          userId: currentUser.id
+        })
+      })
+
+      await fetch("/api/gamification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "awardPoints",
+          userId: currentUser.id,
+          points: score * 10,
+          activity: "lesson_complete"
+        })
+      })
 
       return Response.json({ progress })
     }
