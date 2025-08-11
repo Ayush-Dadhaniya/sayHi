@@ -327,7 +327,7 @@ export async function POST(req) {
     }
 
     if (action === "findMentor") {
-      const { userId, language, experience } = data
+      const { userId, language, skillLevel } = data
 
       const mentorsCollection = db.collection("mentors")
       const usersCollection = db.collection("users")
@@ -338,8 +338,8 @@ export async function POST(req) {
         languages: { $in: [language] }
       }
 
-      if (experience) {
-        query.experience = experience
+      if (skillLevel) {
+        query.experience = skillLevel
       }
 
       const mentors = await mentorsCollection.find(query).limit(10).toArray()

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserPlus, Globe, MapPin, MessageCircle, Filter, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 
 // Placeholder for Admin functionality, replace with actual implementation
 const AdminPanel = ({ currentUser }) => {
@@ -207,6 +209,10 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
   useEffect(() => {
     if (activeView === "discover") {
       fetchNearbyUsers();
+    } else if (activeView === "findFriend") {
+      // Clear users when switching to Find Friend tab
+      setUsers([]);
+      setDisplayedUsers([]);
     }
     fetchSentRequests();
   }, [currentUser, activeView]);
@@ -528,8 +534,10 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
       ) : displayedUsers.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500">
-            {activeView === "findFriend" && searchQuery 
-              ? "No users found matching your search." 
+            {activeView === "findFriend" 
+              ? searchQuery 
+                ? "No users found matching your search." 
+                : "Enter a name or username to search for friends."
               : "No users found to discover."}
           </p>
         </div>

@@ -218,7 +218,7 @@ Click OK to continue...`)
         body: JSON.stringify({
           action: 'findMentor',
           userId: currentUser.id,
-          language: currentUser.language || 'spanish',
+          language: currentUser.language || 'Hindi',
           skillLevel: 'beginner'
         })
       })
@@ -233,7 +233,7 @@ Click OK to continue...`)
               action: 'createMentorship',
               mentorId: mentor.userId,
               menteeId: currentUser.id,
-              language: currentUser.language || 'spanish'
+              language: currentUser.language || 'Hindi'
             })
           })
         }
