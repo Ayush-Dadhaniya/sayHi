@@ -6,25 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import {
-  Heart,
-  X,
-  Star,
-  MapPin,
-  Globe,
-  Calendar,
-  Coffee,
-  Music,
-  Book,
-  Camera,
-  Plane,
-  ArrowLeft,
-  MessageCircle,
-  Filter,
-  Users,
-  Video,
-  LogOut // Added LogOut icon
-} from "lucide-react"
+import { Plane, Music, Camera, Book, Coffee } from "lucide-react"
 
 const INTERESTS = [
   { id: 1, name: "Travel", icon: Plane },
@@ -307,7 +289,6 @@ export default function DatingMode({ currentUser, onBack, onStartChat, isAdmin }
 
   const currentMatch = potentialMatches[currentMatchIndex];
 
-  // Terms and Conditions Modal
   if (showTerms) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4">
@@ -321,83 +302,38 @@ export default function DatingMode({ currentUser, onBack, onStartChat, isAdmin }
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
               <h3 className="text-lg font-semibold mb-2">Are you looking for dating?</h3>
-              <p className="text-sm text-gray-600">
-                This mode helps you find meaningful romantic connections through language learning
-              </p>
+              <p className="text-sm text-gray-600">This mode helps you find meaningful romantic connections through language learning.</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="rounded"
+                />
+                <label htmlFor="terms" className="text-sm">I agree to the terms and conditions</label>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={onBack} className="flex-1">Cancel</Button>
+                <Button
+                  onClick={() => {
+                    if (termsAccepted) {
+                      createDatingProfile();
+                    }
+                  }}
+                  disabled={!termsAccepted}
+                  className="flex-1"
+                >
+                  Continue
+                </Button>
+              </div>
             </div>
-
-            <div className="space-y-3">
-              <Button
-                variant={wantsDating === true ? "default" : "outline"}
-                className="w-full"
-                onClick={() => setWantsDating(true)}
-              >
-                Yes, I'm interested in dating
-              </Button>
-              <Button
-                variant={wantsDating === false ? "default" : "outline"}
-                className="w-full"
-                onClick={() => {
-                  setWantsDating(false);
-                  alert("Please use the 'Find Friends' feature instead!");
-                  onBack();
-                }}
-              >
-                No, just looking for friends
-              </Button>
-            </div>
-
-            {wantsDating === true && (
-              <>
-                <div className="bg-gray-50 p-4 rounded-lg text-sm">
-                  <h4 className="font-semibold mb-2">Terms & Conditions</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• Be respectful and kind to all users</li>
-                    <li>• No inappropriate content or behavior</li>
-                    <li>• You must be 18+ to use dating features</li>
-                    <li>• Report any suspicious activity</li>
-                    <li>• Your safety is our priority</li>
-                    <li>• Focus on language learning and cultural exchange</li>
-                  </ul>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="terms"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    className="rounded"
-                  />
-                  <label htmlFor="terms" className="text-sm">
-                    I agree to the terms and conditions
-                  </label>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={onBack} className="flex-1">
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      if (termsAccepted) {
-                        createDatingProfile();
-                      }
-                    }}
-                    disabled={!termsAccepted || loading}
-                    className="flex-1"
-                  >
-                    {loading ? "Creating Profile..." : "Continue"}
-                  </Button>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
       </div>
     );
   }
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4">
       <div className="max-w-4xl mx-auto">
@@ -836,8 +772,8 @@ export default function DatingMode({ currentUser, onBack, onStartChat, isAdmin }
                     )}
                   </div>
                 ))}
+              </CardContent>
               </Card>
-            )}
           </div>
         )}
       </div>
