@@ -34,6 +34,9 @@ import {
 import DiscoverUsers from "@/components/discover-users"
 import FriendRequests from "@/components/friend-requests"
 import FriendsList from "@/components/friends-list"
+import VideoCall from "@/components/video-call"
+import GiftExchange from "@/components/gift-exchange"
+import DatingMode from "@/components/dating-mode"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import React from "react"
 import ChatInterface from "@/components/chat-interface"
@@ -90,6 +93,9 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const [friendsCount, setFriendsCount] = useState(0)
   const [activeChat, setActiveChat] = useState(null)
+  const [activeVideoCall, setActiveVideoCall] = useState(null)
+  const [showGiftExchange, setShowGiftExchange] = useState(false)
+  const [showDatingMode, setShowDatingMode] = useState(false)
   const fileInputRef = React.useRef(null)
 
   // Handle starting a chat
@@ -100,6 +106,33 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
   // Handle going back from chat
   const handleBackFromChat = () => {
     setActiveChat(null)
+  }
+
+  // Handle video call
+  const handleStartVideoCall = (chatPartner) => {
+    setActiveVideoCall(chatPartner)
+  }
+
+  const handleEndVideoCall = () => {
+    setActiveVideoCall(null)
+  }
+
+  // Handle gift exchange
+  const handleShowGiftExchange = () => {
+    setShowGiftExchange(true)
+  }
+
+  const handleBackFromGiftExchange = () => {
+    setShowGiftExchange(false)
+  }
+
+  // Handle dating mode
+  const handleShowDatingMode = () => {
+    setShowDatingMode(true)
+  }
+
+  const handleBackFromDatingMode = () => {
+    setShowDatingMode(false)
   }
 
   // Fetch friends count
@@ -217,6 +250,21 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
     } catch (error) {
       console.error("Failed to mark notification as read:", error)
     }
+  }
+
+  // Render video call if active
+  if (activeVideoCall) {
+    return <VideoCall currentUser={currentUser} chatPartner={activeVideoCall} onEndCall={handleEndVideoCall} />
+  }
+
+  // Render gift exchange if active
+  if (showGiftExchange) {
+    return <GiftExchange currentUser={currentUser} onBack={handleBackFromGiftExchange} />
+  }
+
+  // Render dating mode if active
+  if (showDatingMode) {
+    return <DatingMode currentUser={currentUser} onBack={handleBackFromDatingMode} onStartChat={handleStartChat} />
   }
 
   return (
@@ -342,51 +390,82 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={() => setActiveView("discover")}
+                >
                   <Search className="h-4 w-4 mr-2" />
                   Find Friends
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={handleShowGiftExchange}
+                >
+                  <Gift className="h-4 w-4 mr-2" />
+                  Gift Exchange
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full justify-start"
+                  onClick={handleShowDatingMode}
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Dating Mode
                 </Button>
                 <Button variant="outline" size="sm" className="w-full justify-start">
                   <Languages className="h-4 w-4 mr-2" />
                   Language Exchange
                 </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Events
-                </Button>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Learn Together
-                </Button>
               </CardContent>
             </Card>
 
-            {/* Coming Soon Features */}
-            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+            {/* New Features */}
+            <Card className="bg-gradient-to-br from-green-50 to-blue-50 border-green-200">
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="p-2 bg-purple-500 rounded-lg">
+                  <div className="p-2 bg-green-500 rounded-lg">
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
-                  Coming Soon
+                  New Features
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Video className="h-4 w-4 text-purple-500" />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={() => activeChat && handleStartVideoCall(activeChat)}
+                  disabled={!activeChat}
+                >
+                  <Video className="h-4 w-4 mr-2" />
                   <span>Video Calls</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Gift className="h-4 w-4 text-purple-500" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={handleShowGiftExchange}
+                >
+                  <Gift className="h-4 w-4 mr-2" />
                   <span>Gift Exchange</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Trophy className="h-4 w-4 text-purple-500" />
-                  <span>Achievements</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Heart className="h-4 w-4 text-purple-500" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={handleShowDatingMode}
+                >
+                  <Heart className="h-4 w-4 mr-2" />
                   <span>Dating Mode</span>
+                </Button>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Trophy className="h-4 w-4" />
+                  <span>Achievements (Coming Soon)</span>
                 </div>
               </CardContent>
             </Card>
@@ -452,6 +531,15 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                             Back to Friends
                           </Button>
                           <h3 className="text-lg font-semibold">Chat with {activeChat.name}</h3>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleStartVideoCall(activeChat)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Video className="h-4 w-4 mr-2" />
+                            Video Call
+                          </Button>
                         </div>
                         <div className="flex-1 border rounded-lg overflow-hidden">
                           <ChatInterface 
@@ -472,7 +560,11 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                         </TabsContent>
                         
                         <TabsContent value="friends" className="mt-0">
-                          <FriendsList currentUser={currentUser} onStartChat={handleStartChat} />
+                          <FriendsList 
+                            currentUser={currentUser} 
+                            onStartChat={handleStartChat} 
+                            onStartVideo={handleStartVideoCall}
+                          />
                         </TabsContent>
                       </>
                     )}

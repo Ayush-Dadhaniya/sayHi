@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MessageCircle, Globe, MapPin } from "lucide-react"
+import { MessageCircle, Globe, MapPin, Video } from "lucide-react"
 
-export default function FriendsList({ currentUser, onStartChat }) {
+export default function FriendsList({ currentUser, onStartChat, onStartVideo }) {
   const [friends, setFriends] = useState([])
 
   useEffect(() => {
@@ -63,10 +63,24 @@ export default function FriendsList({ currentUser, onStartChat }) {
                     </div>
                   </div>
                 </div>
-                <Button size="sm" onClick={() => onStartChat(friend)} className="bg-green-500 hover:bg-green-600">
-                  <MessageCircle className="h-4 w-4 mr-1" />
-                  Chat
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onStartChat?.(friend)}
+                    className="hover:bg-blue-50"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onStartVideo?.(friend)}
+                    className="hover:bg-green-50 text-green-600"
+                  >
+                    <Video className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
