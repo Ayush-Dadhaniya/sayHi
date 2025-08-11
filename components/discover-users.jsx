@@ -234,7 +234,11 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
   };
 
   const searchUsers = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim()) {
+      setUsers([]);
+      setDisplayedUsers([]);
+      return;
+    }
     
     try {
       setIsLoading(true);
@@ -242,8 +246,19 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
       const data = await response.json();
 
       if (response.ok) {
-        setUsers(data.users || []);
-        setDisplayedUsers(data.users || []);
+        // Filter out users that would appear in discover (exclude nearby/suggested users)
+        const filteredUsers = data.users?.filter(user => {
+          // Only show exact matches or very specific searches
+          const query = searchQuery.toLowerCase();
+          const nameMatch = user.name?.toLowerCase().includes(query);
+          const usernameMatch = user.username?.toLowerCase().includes(query);
+          
+          // Only return if it's a direct/specific match
+          return nameMatch || usernameMatch;
+        }) || [];
+        
+        setUsers(filteredUsers);
+        setDisplayedUsers(filteredUsers);
       } else {
         setError("Failed to search users");
       }
@@ -445,42 +460,60 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
           </div>
 
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Country</label>
-                <Input
-                  placeholder="Filter by country"
-                  value={filters.country}
-                  onChange={(e) => {
-                    const newFilters = { ...filters, country: e.target.value };
-                    setFilters(newFilters);
-                    applyFilters();
-                  }}
-                />
+            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Country</label>
+                  <Input
+                    placeholder="Filter by country"
+                    value={filters.country}
+                    onChange={(e) => {
+                      const newFilters = { ...filters, country: e.target.value };
+                      setFilters(newFilters);
+                      applyFilters();
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Language</label>
+                  <Input
+                    placeholder="Filter by language"
+                    value={filters.language}
+                    onChange={(e) => {
+                      const newFilters = { ...filters, language: e.target.value };
+                      setFilters(newFilters);
+                      applyFilters();
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Name</label>
+                  <Input
+                    placeholder="Filter by name"
+                    value={filters.name}
+                    onChange={(e) => {
+                      const newFilters = { ...filters, name: e.target.value };
+                      setFilters(newFilters);
+                      applyFilters();
+                    }}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Language</label>
-                <Input
-                  placeholder="Filter by language"
-                  value={filters.language}
-                  onChange={(e) => {
-                    const newFilters = { ...filters, language: e.target.value };
-                    setFilters(newFilters);
-                    applyFilters();
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  {displayedUsers.length} of {users.length} users shown
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFilters({ country: "", language: "", name: "" });
+                    setDisplayedUsers(users);
                   }}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Name</label>
-                <Input
-                  placeholder="Filter by name"
-                  value={filters.name}
-                  onChange={(e) => {
-                    const newFilters = { ...filters, name: e.target.value };
-                    setFilters(newFilters);
-                    applyFilters();
-                  }}
-                />
+                  disabled={!filters.country && !filters.language && !filters.name}
+                >
+                  Clear Filters
+                </Button>
               </div>
             </div>
           )}

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -34,7 +33,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
   const [viewingLesson, setViewingLesson] = useState(null)
   const [editingPlan, setEditingPlan] = useState(null)
   const [plans, setPlans] = useState([])
-  
+
   // Create Enterprise Form
   const [newEnterprise, setNewEnterprise] = useState({
     name: "",
@@ -42,7 +41,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
     ownerUserId: "",
     plan: "free"
   })
-  
+
   // Create Lesson Form
   const [newLesson, setNewLesson] = useState({
     language: "spanish",
@@ -121,7 +120,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
           ...newEnterprise
         })
       })
-      
+
       if (response.ok) {
         fetchOrganizations()
         setNewEnterprise({ name: "", description: "", ownerUserId: "", plan: "free" })
@@ -137,14 +136,14 @@ export default function AdminDashboard({ currentUser, onBack }) {
   const handleCreateLesson = async () => {
     try {
       setLoading(true)
-      
+
       // Check if lesson with same title, language, and course already exists
       const existingLesson = lessons.find(lesson => 
         lesson.title === newLesson.title && 
         lesson.language === newLesson.language && 
         lesson.course === newLesson.course
       )
-      
+
       if (existingLesson) {
         // Add questions to existing lesson
         const response = await fetch("/api/admin", {
@@ -157,7 +156,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
             questions: newLesson.questions
           })
         })
-        
+
         if (response.ok) {
           fetchLessons()
           setNewLesson({
@@ -179,7 +178,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
             ...newLesson
           })
         })
-        
+
         if (response.ok) {
           fetchLessons()
           setNewLesson({
@@ -198,35 +197,37 @@ export default function AdminDashboard({ currentUser, onBack }) {
     }
   }
 
-  const handleUpdatePlan = async (planId, updates) => {
+  const handleUpdatePlan = async (planName, updates) => {
     try {
-      setLoading(true)
-      const response = await fetch("/api/admin", {
+      const response = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "updatePlan",
-          adminUserId: currentUser.id,
-          planId,
+          planName,
           updates
         })
       })
-      
+
       if (response.ok) {
-        fetchPlans()
+        // Update local state
+        setPlans(plans.map(p => 
+          p.name === planName ? { ...p, ...updates } : p
+        ))
         setEditingPlan(null)
         alert("Plan updated successfully!")
+      } else {
+        alert("Failed to update plan")
       }
     } catch (error) {
       console.error("Failed to update plan:", error)
-    } finally {
-      setLoading(false)
+      alert("Failed to update plan")
     }
   }
 
   const handleDeleteEnterprise = async (enterpriseId) => {
     if (!confirm("Are you sure you want to delete this enterprise?")) return
-    
+
     try {
       setLoading(true)
       const response = await fetch("/api/admin", {
@@ -238,7 +239,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
           enterpriseId
         })
       })
-      
+
       if (response.ok) {
         fetchOrganizations()
         alert("Enterprise deleted successfully!")
@@ -252,7 +253,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
 
   const handleDeleteUser = async (userId) => {
     if (!confirm("Are you sure you want to delete this user?")) return
-    
+
     try {
       setLoading(true)
       const response = await fetch("/api/admin", {
@@ -264,7 +265,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
           userId
         })
       })
-      
+
       if (response.ok) {
         fetchUsers()
         alert("User deleted successfully!")
@@ -278,7 +279,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
 
   const handleDeleteLesson = async (lessonId) => {
     if (!confirm("Are you sure you want to delete this lesson?")) return
-    
+
     try {
       setLoading(true)
       const response = await fetch("/api/admin", {
@@ -290,7 +291,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
           lessonId
         })
       })
-      
+
       if (response.ok) {
         fetchLessons()
         alert("Lesson deleted successfully!")
@@ -302,29 +303,28 @@ export default function AdminDashboard({ currentUser, onBack }) {
     }
   }
 
-  const handleDeletePlan = async (planId) => {
-    if (!confirm("Are you sure you want to delete this plan?")) return
-    
-    try {
-      setLoading(true)
-      const response = await fetch("/api/admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "deletePlan",
-          adminUserId: currentUser.id,
-          planId
+  const handleDeletePlan = async (planName) => {
+    if (confirm("Are you sure you want to delete this plan?")) {
+      try {
+        const response = await fetch("/api/plans", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "deletePlan",
+            planName
+          })
         })
-      })
-      
-      if (response.ok) {
-        fetchPlans()
-        alert("Plan deleted successfully!")
+
+        if (response.ok) {
+          setPlans(plans.filter(p => p.name !== planName))
+          alert("Plan deleted successfully!")
+        } else {
+          alert("Failed to delete plan")
+        }
+      } catch (error) {
+        console.error("Failed to delete plan:", error)
+        alert("Failed to delete plan")
       }
-    } catch (error) {
-      console.error("Failed to delete plan:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -365,7 +365,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -377,7 +377,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -389,7 +389,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -586,7 +586,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
                     onChange={(e) => setNewLesson({...newLesson, title: e.target.value})}
                   />
                 </div>
-                
+
                 {newLesson.questions.map((q, index) => (
                   <Card key={index} className="p-4">
                     <Input
@@ -625,7 +625,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
                     </div>
                   </Card>
                 ))}
-                
+
                 <Button onClick={handleCreateLesson} disabled={loading}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Lesson

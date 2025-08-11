@@ -563,10 +563,7 @@ export default function Dashboard({ currentUser, onLogout }) {
                     <p className="text-gray-600 mt-1">Discover new friends and start conversations</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Trending
-                    </Badge>
+                    {/* Trending Badge removed as per the change */}
                   </div>
                 </div>
               </CardHeader>
@@ -655,7 +652,7 @@ export default function Dashboard({ currentUser, onLogout }) {
                             onStartVideo={handleStartVideoCall}
                           />
                         </TabsContent>
-                        
+
                         <TabsContent value="find-friends" className="mt-0">
                           <DiscoverUsers 
                             currentUser={currentUser} 

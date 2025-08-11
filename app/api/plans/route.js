@@ -83,7 +83,8 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const { action, userId, planId } = await req.json()
+    const body = await req.json()
+    const { action, userId, planId } = body
     
     if (action === "upgradePlan") {
       const client = await clientPromise
@@ -99,6 +100,30 @@ export async function POST(req) {
         }
       )
       
+      return Response.json({ success: true })
+    }
+
+    if (action === "updatePlan") {
+      const { planName, updates } = body
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      
+      // Update the plan in database (assuming you store plans in DB)
+      await db.collection("plans").updateOne(
+        { name: planName },
+        { $set: { ...updates, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      )
+      
+      return Response.json({ success: true })
+    }
+
+    if (action === "deletePlan") {
+      const { planName } = body
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      
+      await db.collection("plans").deleteOne({ name: planName })
       return Response.json({ success: true })
     }
     

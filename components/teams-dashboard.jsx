@@ -91,6 +91,28 @@ export default function TeamsDashboard({ currentUser, onBack }) {
   const handleCreateTeam = async () => {
     if (!selectedEnterprise) return
     
+    // Check plan limits
+    const userPlan = currentUser.plan || "free"
+    const planLimits = {
+      free: { maxTeams: 1 },
+      pro: { maxTeams: 5 },
+      enterprise: { maxTeams: -1 } // unlimited
+    }
+    
+    const currentLimit = planLimits[userPlan]?.maxTeams || 1
+    
+    if (currentLimit !== -1 && enterpriseTeams.length >= currentLimit) {
+      if (confirm(`Your ${userPlan} plan allows only ${currentLimit} team(s). Upgrade to create more teams?`)) {
+        // Redirect to plans
+        onBack() // Go back to dashboard
+        setTimeout(() => {
+          // This would trigger the subscription plans view
+          window.location.hash = "plans"
+        }, 100)
+      }
+      return
+    }
+    
     try {
       setLoading(true)
       const response = await fetch("/api/enterprises", {

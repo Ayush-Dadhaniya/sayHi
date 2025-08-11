@@ -145,15 +145,17 @@ export async function GET(req) {
       return Response.json({ error: "Search term is required" }, { status: 400 })
     }
 
+    // More specific search - exact matches or starts with search term
     const users = await usersCollection.find({
       $or: [
-        { name: { $regex: searchTerm, $options: "i" } },
-        { username: { $regex: searchTerm, $options: "i" } },
-        { language: { $regex: searchTerm, $options: "i" } }
+        { username: { $regex: `^${searchTerm}`, $options: "i" } }, // Username starts with search
+        { name: { $regex: `^${searchTerm}`, $options: "i" } }, // Name starts with search
+        { username: { $regex: searchTerm, $options: "i" } }, // Username contains search
+        { name: { $regex: searchTerm, $options: "i" } } // Name contains search
       ],
       id: { $ne: userId }, // Exclude the current user
       isAdmin: { $ne: true } // Exclude admin users
-    }).toArray()
+    }).limit(20).toArray() // Limit results for better performance
 
     return Response.json({ users })
   }
