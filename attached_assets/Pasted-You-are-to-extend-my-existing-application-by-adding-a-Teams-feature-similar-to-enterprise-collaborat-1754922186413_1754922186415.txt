@@ -1,0 +1,93 @@
+You are to extend my existing application by adding a Teams feature similar to enterprise collaboration tools.
+
+Requirements:
+
+Enterprise Creation
+
+Add a new entity called Enterprise with attributes: id, name, description, createdByUserId, createdAt, updatedAt.
+
+Only registered users can create an enterprise.
+
+The creator automatically becomes the Enterprise Owner.
+
+Team Management inside Enterprise
+
+Each enterprise can have multiple teams.
+
+Add a Team entity with attributes: id, enterpriseId, name, description, createdByUserId, createdAt, updatedAt.
+
+Only enterprise members can create a team.
+
+Membership
+
+A User can be part of multiple enterprises and multiple teams within them.
+
+Add a Membership table with userId, enterpriseId, role (OWNER, ADMIN, MEMBER).
+
+Add a TeamMembership table with userId, teamId, role (TEAM_LEAD, MEMBER).
+
+Member Invitation
+
+Ability for enterprise owner or admin to add members from already registered users in the app.
+
+Invite via username or email.
+
+If user already exists, just add them to membership.
+
+Permissions
+
+Only enterprise owners/admins can:
+
+Add/remove members in enterprise
+
+Create/delete teams in enterprise
+
+Only team leads can add/remove members in that team.
+
+API Endpoints (REST or GraphQL depending on my current app)
+
+POST /enterprises → Create enterprise
+
+GET /enterprises → List enterprises for logged-in user
+
+POST /enterprises/{id}/members → Add registered user as member
+
+DELETE /enterprises/{id}/members/{userId} → Remove member
+
+POST /enterprises/{id}/teams → Create team
+
+POST /teams/{id}/members → Add member to team
+
+etc. (AI should generate all CRUD APIs)
+
+Frontend Integration
+
+Create UI screens to:
+
+View all enterprises a user is part of
+
+Create a new enterprise
+
+View members of an enterprise
+
+Add members to an enterprise (from registered users list)
+
+Create teams under enterprise and view their members
+
+Tech Stack
+
+Use the same backend, frontend, and database technology as in my existing code.
+
+Maintain consistent architecture, authentication, and authorization mechanisms already implemented.
+
+Database Migration
+
+AI must generate the SQL migration script(s) to create the new tables and relations.
+
+Code Quality
+
+Follow the same coding style as my existing project.
+
+Include validation, error handling, and logging.
+
+Ensure role-based access control is enforced for all endpoints.
