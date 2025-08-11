@@ -184,6 +184,21 @@ export default function LanguageLearning({ currentUser, onBack }) {
     }
   }
 
+  const calculateOverallProgress = () => {
+    if (!progress?.courses) return 0
+    
+    let totalCompleted = 0
+    let totalLessons = 0
+    
+    COURSE_TYPES.forEach(courseType => {
+      const courseProgress = progress.courses[courseType.id] || { completed: 0, total: courseType.totalLessons }
+      totalCompleted += courseProgress.completed
+      totalLessons += courseProgress.total
+    })
+    
+    return totalLessons > 0 ? (totalCompleted / totalLessons) * 100 : 0
+  }
+
   const playAudio = (text) => {
     // Use Web Speech API for text-to-speech
     if ('speechSynthesis' in window && text) {
@@ -470,18 +485,4 @@ export default function LanguageLearning({ currentUser, onBack }) {
     )
   }
 
-  const calculateOverallProgress = () => {
-    if (!progress?.courses) return 0
-    
-    let totalCompleted = 0
-    let totalLessons = 0
-    
-    COURSE_TYPES.forEach(courseType => {
-      const courseProgress = progress.courses[courseType.id] || { completed: 0, total: courseType.totalLessons }
-      totalCompleted += courseProgress.completed
-      totalLessons += courseProgress.total
-    })
-    
-    return totalLessons > 0 ? (totalCompleted / totalLessons) * 100 : 0
   }
-}
