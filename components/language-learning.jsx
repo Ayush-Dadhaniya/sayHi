@@ -111,6 +111,8 @@ export default function LanguageLearning({ currentUser, onBack }) {
     const question = lessons[currentQuestion]
     let isCorrect = false
 
+    if (!question) return; // Safety check
+
     if (question.type === "writing") {
       // For writing questions, check against correct answer
       isCorrect = writtenAnswer?.toLowerCase().trim() === question.correctAnswer?.toLowerCase().trim()
@@ -558,10 +560,9 @@ export default function LanguageLearning({ currentUser, onBack }) {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : question && question.options ? (
                 <div className="space-y-3">
-                  {question.options && question.options.length > 0 ? (
-                    question.options.map((option, index) => (
+                  {question.options.map((option, index) => (
                       <Button
                         key={index}
                         variant="outline"
@@ -578,11 +579,11 @@ export default function LanguageLearning({ currentUser, onBack }) {
                         {option}
                       </Button>
                     ))
-                  ) : (
-                    <div className="text-center text-gray-500 p-4">
-                      No options available for this question
-                    </div>
-                  )}
+                  }
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No question available for this lesson.</p>
                 </div>
               )}
 
