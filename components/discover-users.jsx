@@ -172,7 +172,7 @@ const AdminPanel = ({ currentUser }) => {
               <Card key={enterprise.id}>
                 <CardHeader>
                   <CardTitle>{enterprise.name}</CardTitle>
-                  <CardSubtitle>{enterprise.industry}</CardSubtitle>
+                  <p className="text-sm text-muted-foreground">{enterprise.industry}</p>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-gray-600 mb-2">Contact: {enterprise.contact}</p>
