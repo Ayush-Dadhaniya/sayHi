@@ -1,0 +1,91 @@
+You are to enhance my existing language learning application by adding the following new features while maintaining all current features, architecture, and coding conventions.
+
+Overall Rules:
+
+Maintain current tech stack and folder structure.
+
+Integrate features cleanly into existing authentication, user profile, and content systems.
+
+Keep database schema updates in migration scripts.
+
+Ensure role-based access control for premium/enterprise features.
+
+Include backend + frontend + database changes in your output.
+
+1. Gamification Features
+
+Daily/Weekly Streaks: Track consecutive learning days/weeks per user. Show streak counts on profile.
+
+Achievement Badges: Award for completing lessons, making friends, helping others, etc. Store in a UserBadges table.
+
+Leaderboards: Weekly and monthly rankings by points. Publicly visible.
+
+Points System: Users earn points for lessons, chats, group participation. Redeem points for premium trials or features.
+
+2. Advanced Social Features
+
+Language Exchange Partners: Match users who want to learn each other’s native languages (mutual matching).
+
+Group Study Sessions: Allow scheduling of group video calls by topic/language.
+
+Cultural Events: Host virtual events. Allow RSVP, notifications.
+
+Mentorship Program: Link beginners to advanced users.
+
+3. Premium Features for Monetization
+
+AI-Powered Conversation Practice: In-app chat with AI in target language.
+
+Professional Certification: Issue certificates on course completion with unique ID & QR verification.
+
+1-on-1 Native Speaker Sessions: Schedule and manage paid tutoring.
+
+Offline Mode: Download lessons (encrypted) for offline use.
+
+Advanced Analytics: Track granular learning stats and suggest improvements.
+
+4. Enterprise Features
+
+LMS Dashboard: Track employee learning progress, reports exportable as CSV/PDF.
+
+Custom Course Creation: Admins can add company-specific lessons.
+
+Integration APIs: REST endpoints for HR integration.
+
+White-label Solution: Configurable branding for enterprise clients.
+
+Bulk User Management: CSV import/export for enterprise accounts.
+
+5. Smart Features
+
+Voice Recognition: Pronunciation evaluation with AI feedback score.
+
+Smart Notifications: Personalized reminders based on missed streaks, progress rate.
+
+Progress Sharing: Allow users to post achievements to social media.
+
+Smart Matching: AI recommends study partners based on shared goals & schedules.
+
+6. Content Enhancement
+
+Interactive Stories: Lessons in branching narrative format.
+
+Real-world Scenarios: Business travel, daily conversation practice.
+
+Cultural Context Lessons: Country-specific etiquette & customs.
+
+News Integration: Daily short articles in target language, with inline translation help.
+
+Deliverables:
+
+All backend endpoints, controllers, services, and database migrations for new entities (streaks, badges, leaderboards, matches, events, etc.).
+
+Frontend components, pages, and integration for all new features (React/Vue/Angular, matching my current setup).
+
+SQL migration scripts with foreign keys and indexes.
+
+Integration of premium and enterprise access restrictions with my current subscription logic.
+
+Unit tests for core functionalities (especially streak tracking, AI chat, and leaderboard).
+
+Documentation for each new feature, API endpoint, and database change.
