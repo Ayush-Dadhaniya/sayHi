@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -68,10 +67,10 @@ export default function LanguageLearning({ currentUser, onBack }) {
         fetch(`/api/language-learning?action=getProgress&userId=${currentUser.id}&language=${selectedLanguage.name}`),
         fetch(`/api/language-learning?action=getUserScores&userId=${currentUser.id}&language=${selectedLanguage.name}`)
       ])
-      
+
       const progressData = await progressResponse.json()
       const scoresData = await scoresResponse.json()
-      
+
       setProgress(progressData.progress)
       setUserScores(scoresData.scores)
     } catch (error) {
@@ -111,7 +110,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
   const handleAnswer = async (answerIndex, writtenAnswer = null) => {
     const question = lessons[currentQuestion]
     let isCorrect = false
-    
+
     if (question.type === "writing") {
       // For writing questions, check against correct answer
       isCorrect = writtenAnswer?.toLowerCase().trim() === question.correctAnswer?.toLowerCase().trim()
@@ -119,17 +118,17 @@ export default function LanguageLearning({ currentUser, onBack }) {
       // For multiple choice questions
       isCorrect = answerIndex === question.correct
     }
-    
+
     const newAnswers = [...answers, { 
       questionId: question.id, 
       answer: writtenAnswer || answerIndex, 
       correct: isCorrect,
       type: question.type
     }]
-    
+
     setAnswers(newAnswers)
     setShowResult(true)
-    
+
     if (isCorrect) {
       setScore(prev => prev + 1)
     } else {
@@ -208,16 +207,16 @@ export default function LanguageLearning({ currentUser, onBack }) {
 
   const calculateOverallProgress = () => {
     if (!progress?.courses) return 0
-    
+
     let totalCompleted = 0
     let totalLessons = 0
-    
+
     COURSE_TYPES.forEach(courseType => {
       const courseProgress = progress.courses[courseType.id] || { completed: 0, total: courseType.totalLessons }
       totalCompleted += courseProgress.completed
       totalLessons += courseProgress.total
     })
-    
+
     return totalLessons > 0 ? (totalCompleted / totalLessons) * 100 : 0
   }
 
@@ -226,9 +225,9 @@ export default function LanguageLearning({ currentUser, onBack }) {
     if ('speechSynthesis' in window && text) {
       // Stop any current speech
       speechSynthesis.cancel()
-      
+
       const utterance = new SpeechSynthesisUtterance(text)
-      
+
       // Set language based on selected language
       switch(selectedLanguage?.name) {
         case "spanish":
@@ -252,11 +251,11 @@ export default function LanguageLearning({ currentUser, onBack }) {
         default:
           utterance.lang = "en-US"
       }
-      
+
       utterance.rate = 0.8 // Slower rate for learning
       utterance.pitch = 1
       utterance.volume = 1
-      
+
       speechSynthesis.speak(utterance)
     }
   }
@@ -317,7 +316,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 <p className="text-gray-600">Level {progress?.level || 1} • {progress?.xp || 0} XP</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Flame className="h-5 w-5 text-orange-500" />
@@ -381,7 +380,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
               const courseProgress = progress?.courses?.[course.id] || { completed: 0, total: course.totalLessons }
               const IconComponent = courseProgress.completed === courseProgress.total ? CheckCircle : Circle
               const isUnlocked = index === 0 || (progress?.courses && Object.keys(progress.courses).length > index - 1)
-              
+
               return (
                 <Card 
                   key={course.id} 
@@ -441,7 +440,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
               <h2 className="text-2xl font-bold mb-2">Lesson Complete!</h2>
               <p className="text-gray-600 mb-2">You got {score} out of {lessons.length} correct</p>
               <p className="text-gray-600 mb-4">You earned {score * 10} XP</p>
-              
+
               {/* Progress stats */}
               <div className="grid grid-cols-3 gap-4 mb-6 text-center">
                 <div>
@@ -495,7 +494,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
     }
 
     const question = lessons[currentQuestion]
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4">
         <div className="max-w-2xl mx-auto">
@@ -561,23 +560,29 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {question.options && question.options.map((option, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className={`w-full text-left justify-start p-4 h-auto ${
-                        showResult
-                          ? index === question.correct
-                            ? "bg-green-100 border-green-500"
-                            : "bg-red-100 border-red-500"
-                          : ""
-                      }`}
-                      onClick={() => !showResult && handleAnswer(index)}
-                      disabled={showResult}
-                    >
-                      {option}
-                    </Button>
-                  ))}
+                  {question.options && question.options.length > 0 ? (
+                    question.options.map((option, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className={`w-full text-left justify-start p-4 h-auto ${
+                          showResult
+                            ? index === question.correct
+                              ? "bg-green-100 border-green-500"
+                              : "bg-red-100 border-red-500"
+                            : ""
+                        }`}
+                        onClick={() => !showResult && handleAnswer(index)}
+                        disabled={showResult}
+                      >
+                        {option}
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500 p-4">
+                      No options available for this question
+                    </div>
+                  )}
                 </div>
               )}
 

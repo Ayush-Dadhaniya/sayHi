@@ -310,7 +310,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat, isAdmin }
   // Terms and Conditions Modal
   if (showTerms) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-red-50 to-orange-50 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-center">Dating Mode</CardTitle>
