@@ -27,7 +27,7 @@ const BADGE_INFO = {
   language_explorer: { name: "Explorer", icon: Target, color: "bg-indigo-500", description: "Learn 3 languages" }
 }
 
-export default function GamificationDashboard({ currentUser }) {
+export default function GamificationDashboard({ currentUser, onBack }) {
   const [streak, setStreak] = useState(null)
   const [badges, setBadges] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
@@ -78,10 +78,15 @@ export default function GamificationDashboard({ currentUser }) {
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold mb-2">Your Learning Journey</h2>
-        <p className="text-gray-600">Track your progress and achievements</p>
-      </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="text-center flex-1">
+          <h2 className="text-3xl font-bold mb-2">Your Learning Journey</h2>
+          <p className="text-gray-600">Track your progress and achievements</p>
+        </div>
+        <Button variant="outline" onClick={onBack}>
+          ← Back
+        </Button>
+      </div></div>
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

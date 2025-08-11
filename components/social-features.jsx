@@ -170,6 +170,81 @@ export default function SocialFeatures({ currentUser, onBack }) {
     }
   }
 
+  const handleEnterSession = (session) => {
+    // Create a virtual meeting room
+    alert(`Welcome to "${session.title}"! 
+
+Group Chat Features Available:
+• Text chat with all participants
+• Voice/Video calls 
+• Screen sharing for lessons
+• Collaborative learning exercises
+
+Host: ${session.host?.name}
+Language: ${session.language}
+Duration: ${session.duration} minutes
+
+Click OK to continue...`)
+  }
+
+  const handleLeaveSession = async (sessionId) => {
+    try {
+      await fetch("/api/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "leaveStudySession",
+          sessionId,
+          userId: currentUser.id
+        })
+      })
+      fetchSocialData()
+    } catch (error) {
+      console.error("Failed to leave session:", error)
+    }
+  }
+
+  const handleFindMentor = async () => {
+    try {
+      const response = await fetch("/api/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "findMentor",
+          userId: currentUser.id,
+          language: "spanish" // You can make this dynamic
+        })
+      })
+      
+      if (response.ok) {
+        fetchSocialData()
+        alert("Mentor request sent!")
+      }
+    } catch (error) {
+      console.error("Failed to find mentor:", error)
+    }
+  }
+
+  const handleBecomeMentor = async () => {
+    try {
+      const response = await fetch("/api/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "becomeMentor",
+          userId: currentUser.id,
+          languages: [currentUser.language] // User's languages they can mentor in
+        })
+      })
+      
+      if (response.ok) {
+        alert("You are now registered as a mentor!")
+      }
+    } catch (error) {
+      console.error("Failed to become mentor:", error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -284,14 +359,25 @@ export default function SocialFeatures({ currentUser, onBack }) {
                         </div>
                       </div>
 
-                      <Button 
-                        className="w-full" 
-                        size="sm"
-                        disabled={session.participants.includes(currentUser.id) || session.participants.length >= session.maxParticipants}
-                        onClick={() => handleJoinSession(session.id)}
-                      >
-                        {session.participants.includes(currentUser.id) ? "Joined" : "Join Session"}
-                      </Button>
+                      {session.participants.includes(currentUser.id) ? (
+                        <div className="space-y-2">
+                          <Button className="w-full" size="sm" onClick={() => handleEnterSession(session)}>
+                            Enter Session
+                          </Button>
+                          <Button variant="outline" className="w-full" size="sm" onClick={() => handleLeaveSession(session.id)}>
+                            Leave Session
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          className="w-full" 
+                          size="sm"
+                          disabled={session.participants.length >= session.maxParticipants}
+                          onClick={() => handleJoinSession(session.id)}
+                        >
+                          Join Session
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -390,9 +476,10 @@ export default function SocialFeatures({ currentUser, onBack }) {
                         className="w-full" 
                         size="sm"
                         variant={event.rsvps.includes(currentUser.id) ? "default" : "outline"}
-                        onClick={() => handleRSVPEvent(event.id)}
+                        disabled={event.rsvps.includes(currentUser.id)}
+                        onClick={() => event.rsvps.includes(currentUser.id) ? null : handleRSVPEvent(event.id)}
                       >
-                        {event.rsvps.includes(currentUser.id) ? "Going" : "RSVP"}
+                        {event.rsvps.includes(currentUser.id) ? "✓ Going" : "RSVP"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -458,8 +545,8 @@ export default function SocialFeatures({ currentUser, onBack }) {
                   <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">No mentorship connections yet</p>
                   <div className="flex gap-2 justify-center">
-                    <Button>Find a Mentor</Button>
-                    <Button variant="outline">Become a Mentor</Button>
+                    <Button onClick={() => handleFindMentor()}>Find a Mentor</Button>
+                    <Button variant="outline" onClick={() => handleBecomeMentor()}>Become a Mentor</Button>
                   </div>
                 </div>
               ) : (

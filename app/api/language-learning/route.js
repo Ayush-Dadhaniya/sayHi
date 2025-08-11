@@ -51,36 +51,14 @@ export async function GET(req) {
       lesson.questions.length > 0
     )
 
-    // If no valid lessons found, create default ones
+    // If no valid lessons found, create comprehensive default ones
     if (validLessons.length === 0) {
-      const defaultLessons = [
-        {
-          id: Date.now().toString(),
-          language,
-          course,
-          title: "Basic Greetings",
-          questions: [
-            {
-              id: 1,
-              question: "How do you say 'Hello' in Spanish?",
-              options: ["Hola", "Adiós", "Gracias", "Por favor"],
-              answer: "Hola",
-              audio: "/audio/spanish/hola.mp3"
-            },
-            {
-              id: 2,
-              question: "What does 'Gracias' mean?",
-              options: ["Hello", "Goodbye", "Thank you", "Please"],
-              answer: "Thank you",
-              audio: "/audio/spanish/gracias.mp3"
-            }
-          ],
-          createdAt: new Date().toISOString()
-        }
-      ]
-
-      await lessonsCollection.insertMany(defaultLessons)
-      return Response.json({ lessons: defaultLessons })
+      const defaultLessons = createDefaultLessons(language, course)
+      
+      if (defaultLessons.length > 0) {
+        await lessonsCollection.insertMany(defaultLessons)
+        return Response.json({ lessons: defaultLessons })
+      }
     }
 
     return Response.json({ lessons: validLessons })
@@ -389,12 +367,13 @@ function createDefaultLessons(language, course) {
   }
 
   const lessons = lessonTemplates[language]?.[course] || []
-  return lessons.map((lesson, index) => ({
-    ...lesson,
-    id: `${language}_${course}_${index + 1}`,
+  return lessons.map((lessonData, lessonIndex) => ({
+    id: `${language}_${course}_lesson_${lessonIndex + 1}`,
     language,
     course,
-    order: index + 1,
+    title: `${course.charAt(0).toUpperCase() + course.slice(1)} - Lesson ${lessonIndex + 1}`,
+    questions: [lessonData], // Wrap single question data in array
+    order: lessonIndex + 1,
     createdAt: new Date().toISOString()
   }))
 }

@@ -382,10 +382,10 @@ export default function AdminDashboard({ currentUser, onBack }) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-sm">Teams</p>
-                  <p className="text-2xl font-bold">{stats.totalTeams || 0}</p>
+                  <p className="text-purple-100 text-sm">Premium Users</p>
+                  <p className="text-2xl font-bold">{stats.premiumUsers || 0}</p>
                 </div>
-                <Users className="h-8 w-8 text-purple-200" />
+                <Crown className="h-8 w-8 text-purple-200" />
               </div>
             </CardContent>
           </Card>

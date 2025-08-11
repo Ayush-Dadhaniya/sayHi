@@ -1,4 +1,3 @@
-
 import clientPromise from "@/lib/mongodb"
 
 export async function GET(req) {
@@ -28,7 +27,7 @@ export async function GET(req) {
   if (action === "findExchangePartners") {
     const userNative = searchParams.get("native")
     const userLearning = searchParams.get("learning")
-    
+
     // Find users who are learning user's native language and speak user's learning language
     const users = await db.collection("users").find({
       id: { $ne: userId },
@@ -41,7 +40,7 @@ export async function GET(req) {
 
   if (action === "getStudySessions") {
     const sessions = await db.collection("studySessions")
-      .find({ 
+      .find({
         scheduledAt: { $gte: new Date().toISOString() },
         status: "active"
       })
@@ -103,7 +102,7 @@ export async function POST(req) {
 
     if (action === "createLanguageExchange") {
       const { userId, partnerId, userNative, userLearning, partnerNative, partnerLearning } = data
-      
+
       const match = {
         id: Date.now().toString(),
         user1: userId,
@@ -122,7 +121,7 @@ export async function POST(req) {
 
     if (action === "createStudySession") {
       const { hostId, title, description, language, scheduledAt, duration, maxParticipants } = data
-      
+
       const session = {
         id: Date.now().toString(),
         hostId,
@@ -143,7 +142,7 @@ export async function POST(req) {
 
     if (action === "joinStudySession") {
       const { sessionId, userId } = data
-      
+
       const session = await db.collection("studySessions").findOne({ id: sessionId })
       if (!session) {
         return Response.json({ error: "Session not found" }, { status: 404 })
@@ -164,9 +163,26 @@ export async function POST(req) {
       return Response.json({ session })
     }
 
+    if (action === "leaveStudySession") {
+      const { sessionId, userId } = data
+
+      const session = await db.collection("studySessions").findOne({ id: sessionId })
+      if (!session) {
+        return Response.json({ error: "Session not found" }, { status: 404 })
+      }
+
+      const updatedParticipants = session.participants.filter(p => p !== userId)
+      await db.collection("studySessions").updateOne(
+        { id: sessionId },
+        { $set: { participants: updatedParticipants } }
+      )
+
+      return Response.json({ success: true })
+    }
+
     if (action === "createCulturalEvent") {
       const { title, description, language, scheduledAt, createdBy } = data
-      
+
       const event = {
         id: Date.now().toString(),
         title,
@@ -184,7 +200,7 @@ export async function POST(req) {
 
     if (action === "rsvpEvent") {
       const { eventId, userId } = data
-      
+
       await db.collection("culturalEvents").updateOne(
         { id: eventId },
         { $addToSet: { rsvps: userId } }
@@ -195,7 +211,7 @@ export async function POST(req) {
 
     if (action === "createMentorship") {
       const { mentorId, menteeId, language } = data
-      
+
       const mentorship = {
         id: Date.now().toString(),
         mentorId,
