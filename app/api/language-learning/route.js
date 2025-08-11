@@ -44,24 +44,38 @@ export async function GET(req) {
       course
     }).toArray()
 
-    // Filter lessons that have valid questions
-    const validLessons = lessons.filter(lesson =>
-      lesson.questions &&
-      Array.isArray(lesson.questions) &&
-      lesson.questions.length > 0
-    )
+    // Process lessons to extract individual questions
+    const processedLessons = []
+    
+    for (const lesson of lessons) {
+      if (lesson.questions && Array.isArray(lesson.questions)) {
+        lesson.questions.forEach((question, index) => {
+          // Map database question format to component expected format
+          const processedQuestion = {
+            id: question.id || `${lesson.id}_q${index}`,
+            question: question.question,
+            type: question.options ? "multiple_choice" : "writing",
+            options: question.options || [],
+            correct: question.options ? question.options.findIndex(opt => opt === question.answer) : undefined,
+            correctAnswer: question.answer,
+            audio: question.audio || question.question,
+            difficulty: "beginner"
+          }
+          processedLessons.push(processedQuestion)
+        })
+      }
+    }
 
-    // If no valid lessons found, create comprehensive default ones
-    if (validLessons.length === 0) {
+    // If no lessons found, create default ones
+    if (processedLessons.length === 0) {
       const defaultLessons = createDefaultLessons(language, course)
-      
       if (defaultLessons.length > 0) {
         await lessonsCollection.insertMany(defaultLessons)
         return Response.json({ lessons: defaultLessons })
       }
     }
 
-    return Response.json({ lessons: validLessons })
+    return Response.json({ lessons: processedLessons })
   }
 
   if (action === "getTestHistory") {

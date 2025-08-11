@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -82,12 +81,37 @@ export default function PremiumFeatures({ currentUser, onBack }) {
 
       const data = await response.json()
       if (data.conversation) {
-        setCurrentConversation(data.conversation)
-        setMessage("")
-        fetchPremiumData()
+        // Ensure messages array exists and append new message
+        const updatedConversation = {
+          ...data.conversation,
+          messages: [
+            ...(currentConversation?.messages || []),
+            { role: "user", content: message.trim(), timestamp: new Date().toISOString() },
+            { role: "assistant", content: data.reply, timestamp: new Date().toISOString() }
+          ]
+        };
+        setCurrentConversation(updatedConversation);
+        setMessage("");
+        // Fetching all data again might not be necessary if only chat is updated,
+        // but for simplicity and to ensure consistency with other parts, we'll keep it.
+        // fetchPremiumData(); 
+      } else if (data.reply) {
+        // Handle cases where a new conversation might not be returned but a reply is
+        const updatedConversation = {
+          ...currentConversation,
+          messages: [
+            ...(currentConversation?.messages || []),
+            { role: "user", content: message.trim(), timestamp: new Date().toISOString() },
+            { role: "assistant", content: data.reply, timestamp: new Date().toISOString() }
+          ]
+        };
+        setCurrentConversation(updatedConversation);
+        setMessage("");
       }
     } catch (error) {
       console.error("Failed to send message:", error)
+      // Display an error message to the user or handle the error state
+      // For now, we'll just log it and stop loading.
     } finally {
       setLoading(false)
     }
@@ -172,9 +196,8 @@ export default function PremiumFeatures({ currentUser, onBack }) {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="ai-chat">AI Chat</TabsTrigger>
-          <TabsTrigger value="certificates">Certificates</TabsTrigger>
           <TabsTrigger value="tutoring">Tutoring</TabsTrigger>
           <TabsTrigger value="voice">Voice Practice</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -202,39 +225,43 @@ export default function PremiumFeatures({ currentUser, onBack }) {
             <CardContent className="space-y-4">
               {/* Chat Interface */}
               <div className="border rounded-lg p-4 h-96 overflow-y-auto bg-gray-50">
-                {currentConversation?.messages.length > 0 ? (
-                  <div className="space-y-3">
-                    {currentConversation.messages.map((msg, index) => (
-                      <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-xs px-4 py-2 rounded-lg ${
-                          msg.role === 'user' 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-white border shadow-sm'
-                        }`}>
-                          <p>{msg.content}</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs opacity-70">
-                              {new Date(msg.timestamp).toLocaleTimeString()}
-                            </span>
-                            {msg.role === 'assistant' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  const utterance = new SpeechSynthesisUtterance(msg.content)
-                                  utterance.lang = selectedLanguage === 'spanish' ? 'es-ES' : 
-                                                  selectedLanguage === 'french' ? 'fr-FR' : 'de-DE'
-                                  speechSynthesis.speak(utterance)
-                                }}
-                              >
-                                <Volume2 className="h-3 w-3" />
-                              </Button>
-                            )}
+                {conversations.length > 0 ? (
+                  conversations.map((conv) => (
+                    currentConversation?.id === conv.id || (!currentConversation && conv.id === conversations[0].id) ? (
+                      <div key={conv.id} className="space-y-3">
+                        {conv.messages.map((msg, index) => (
+                          <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-xs px-4 py-2 rounded-lg ${
+                              msg.role === 'user' 
+                                ? 'bg-blue-500 text-white' 
+                                : 'bg-white border shadow-sm'
+                            }`}>
+                              <p>{msg.content}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs opacity-70">
+                                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {msg.role === 'assistant' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      const utterance = new SpeechSynthesisUtterance(msg.content)
+                                      utterance.lang = selectedLanguage === 'spanish' ? 'es-ES' : 
+                                                      selectedLanguage === 'french' ? 'fr-FR' : 'de-DE'
+                                      speechSynthesis.speak(utterance)
+                                    }}
+                                  >
+                                    <Volume2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    ) : null
+                  ))
                 ) : (
                   <div className="text-center text-gray-500 mt-20">
                     <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -260,50 +287,7 @@ export default function PremiumFeatures({ currentUser, onBack }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="certificates" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Professional Certifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {certifications.length === 0 ? (
-                <div className="text-center py-8">
-                  <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">Complete courses to earn certificates</p>
-                  <Button onClick={() => handleGenerateCertification("spanish-basics", "spanish")}>
-                    Generate Sample Certificate
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {certifications.map((cert) => (
-                    <Card key={cert.id} className="border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50">
-                      <CardContent className="p-4">
-                        <div className="text-center">
-                          <Award className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                          <h3 className="font-bold text-lg">{cert.language} Proficiency</h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            Issued: {new Date(cert.issuedAt).toLocaleDateString()}
-                          </p>
-                          <Badge className="mb-4">{cert.certificationId}</Badge>
-                          <div className="space-y-2">
-                            <Button className="w-full" size="sm">Download PDF</Button>
-                            <Button variant="outline" className="w-full" size="sm">
-                              Verify Certificate
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/* Removed Certificates Tab Content */}
 
         <TabsContent value="tutoring" className="space-y-6">
           <Card>

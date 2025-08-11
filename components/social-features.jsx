@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -28,6 +27,13 @@ export default function SocialFeatures({ currentUser, onBack }) {
   const [culturalEvents, setCulturalEvents] = useState([])
   const [mentorships, setMentorships] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showMentorForm, setShowMentorForm] = useState(false)
+  const [mentorData, setMentorData] = useState({
+    languages: [],
+    experience: "beginner",
+    availability: "weekends",
+    bio: ""
+  })
 
   // Form states
   const [showCreateSession, setShowCreateSession] = useState(false)
@@ -206,44 +212,49 @@ Click OK to continue...`)
 
   const handleFindMentor = async () => {
     try {
-      const response = await fetch("/api/social", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/social', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: "findMentor",
+          action: 'findMentor',
           userId: currentUser.id,
-          language: "spanish" // You can make this dynamic
+          language: 'spanish' // You can make this dynamic
         })
       })
-      
-      if (response.ok) {
-        fetchSocialData()
-        alert("Mentor request sent!")
+      const data = await response.json()
+      if (data.mentors) {
+        setMentorships(data.mentors)
       }
     } catch (error) {
-      console.error("Failed to find mentor:", error)
+      console.error('Error finding mentors:', error)
     }
   }
 
   const handleBecomeMentor = async () => {
+    setShowMentorForm(true)
+  }
+
+  const submitMentorApplication = async () => {
     try {
-      const response = await fetch("/api/social", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/social', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: "becomeMentor",
+          action: 'becomeMentor',
           userId: currentUser.id,
-          languages: [currentUser.language] // User's languages they can mentor in
+          ...mentorData
         })
       })
-      
-      if (response.ok) {
-        alert("You are now registered as a mentor!")
+      const data = await response.json()
+      if (data.mentor) {
+        setShowMentorForm(false)
+        alert('Mentor application submitted successfully!')
       }
     } catch (error) {
-      console.error("Failed to become mentor:", error)
+      console.error('Error submitting mentor application:', error)
     }
   }
+
 
   if (loading) {
     return (
@@ -343,7 +354,7 @@ Click OK to continue...`)
                         </div>
                         <Badge>{session.language}</Badge>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2">
                           <Clock className="h-4 w-4" />
@@ -460,7 +471,7 @@ Click OK to continue...`)
                         </div>
                         <Badge variant="outline">{event.language}</Badge>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4" />
@@ -545,8 +556,44 @@ Click OK to continue...`)
                   <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">No mentorship connections yet</p>
                   <div className="flex gap-2 justify-center">
-                    <Button onClick={() => handleFindMentor()}>Find a Mentor</Button>
-                    <Button variant="outline" onClick={() => handleBecomeMentor()}>Become a Mentor</Button>
+                    <Button 
+                      onClick={() => handleFindMentor()}
+                      className="w-full"
+                    >
+                      Find a Mentor
+                    </Button>
+                    <Button 
+                      onClick={() => handleBecomeMentor()}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Become a Mentor
+                    </Button>
+                    {showMentorForm && (
+                      <div className="mt-4 p-4 border rounded-lg space-y-3">
+                        <Input 
+                          placeholder="Languages you can teach (comma separated)"
+                          value={mentorData.languages.join(',')} // Join array for display
+                          onChange={(e) => setMentorData({...mentorData, languages: e.target.value.split(',')})}
+                        />
+                        <select 
+                          className="w-full p-2 border rounded"
+                          value={mentorData.experience}
+                          onChange={(e) => setMentorData({...mentorData, experience: e.target.value})}
+                        >
+                          <option value="beginner">Beginner</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                          <option value="native">Native</option>
+                        </select>
+                        <Textarea 
+                          placeholder="Tell us about your teaching experience..."
+                          value={mentorData.bio}
+                          onChange={(e) => setMentorData({...mentorData, bio: e.target.value})}
+                        />
+                        <Button onClick={() => submitMentorApplication()}>Submit Application</Button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

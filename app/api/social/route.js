@@ -99,6 +99,9 @@ export async function POST(req) {
     const { action, ...data } = await req.json()
     const client = await clientPromise
     const db = client.db("sayHi")
+    const languageExchangeCollection = db.collection("languageExchangeMatches")
+    const studySessionsCollection = db.collection("studySessions")
+    const mentorshipCollection = db.collection("mentorships")
 
     if (action === "createLanguageExchange") {
       const { userId, partnerId, userNative, userLearning, partnerNative, partnerLearning } = data
@@ -117,6 +120,39 @@ export async function POST(req) {
 
       await db.collection("languageExchangeMatches").insertOne(match)
       return Response.json({ match })
+    }
+
+    if (action === "findLanguageExchangePartner") {
+      const { userId, nativeLanguage, learningLanguage } = data
+
+      const usersCollection = db.collection("users")
+
+      // Find users who are learning user's native language and are native speakers of user's target language
+      const potentialPartners = await usersCollection.find({
+        id: { $ne: userId },
+        nativeLanguage: learningLanguage,
+        learningLanguages: { $in: [nativeLanguage] }
+      }).limit(10).toArray()
+
+      // Create exchange requests
+      const exchangeRequests = potentialPartners.map(partner => ({
+        id: Date.now().toString() + Math.random(),
+        fromUserId: userId,
+        toUserId: partner.id,
+        type: "language_exchange",
+        status: "pending",
+        languages: {
+          teaching: nativeLanguage,
+          learning: learningLanguage
+        },
+        createdAt: new Date().toISOString()
+      }))
+
+      if (exchangeRequests.length > 0) {
+        await languageExchangeCollection.insertMany(exchangeRequests)
+      }
+
+      return Response.json({ partners: potentialPartners, requestsSent: exchangeRequests.length })
     }
 
     if (action === "createStudySession") {
@@ -143,24 +179,75 @@ export async function POST(req) {
     if (action === "joinStudySession") {
       const { sessionId, userId } = data
 
-      const session = await db.collection("studySessions").findOne({ id: sessionId })
+      const session = await studySessionsCollection.findOne({ id: sessionId })
       if (!session) {
         return Response.json({ error: "Session not found" }, { status: 404 })
       }
 
-      if (session.participants.length >= session.maxParticipants) {
-        return Response.json({ error: "Session is full" }, { status: 400 })
+      // Add user to participants
+      const updatedParticipants = [...(session.participants || []), userId]
+
+      await studySessionsCollection.updateOne(
+        { id: sessionId },
+        { 
+          $set: { 
+            participants: updatedParticipants,
+            updatedAt: new Date().toISOString()
+          }
+        }
+      )
+
+      // Create chat room for session
+      const chatCollection = db.collection("sessionChats")
+      await chatCollection.updateOne(
+        { sessionId },
+        {
+          $set: {
+            sessionId,
+            participants: updatedParticipants,
+            createdAt: session.createdAt,
+            updatedAt: new Date().toISOString()
+          }
+        },
+        { upsert: true }
+      )
+
+      return Response.json({ 
+        success: true, 
+        sessionId,
+        chatEnabled: true,
+        videoEnabled: true,
+        participantCount: updatedParticipants.length
+      })
+    }
+
+    if (action === "sendSessionMessage") {
+      const { sessionId, userId, message } = data
+
+      const chatCollection = db.collection("sessionChats")
+      const messagesCollection = db.collection("sessionMessages")
+
+      const newMessage = {
+        id: Date.now().toString(),
+        sessionId,
+        userId,
+        message,
+        timestamp: new Date().toISOString()
       }
 
-      if (!session.participants.includes(userId)) {
-        session.participants.push(userId)
-        await db.collection("studySessions").updateOne(
-          { id: sessionId },
-          { $set: { participants: session.participants } }
-        )
-      }
+      await messagesCollection.insertOne(newMessage)
 
-      return Response.json({ session })
+      return Response.json({ message: newMessage })
+    }
+
+    if (action === "getSessionMessages") {
+      const messagesCollection = db.collection("sessionMessages")
+
+      const messages = await messagesCollection.find({ sessionId: data.sessionId })
+        .sort({ timestamp: 1 })
+        .toArray()
+
+      return Response.json({ messages })
     }
 
     if (action === "leaveStudySession") {
@@ -207,6 +294,74 @@ export async function POST(req) {
       )
 
       return Response.json({ success: true })
+    }
+
+    if (action === "becomeMentor") {
+      const { userId, languages, experience, availability, bio } = data
+
+      const mentorsCollection = db.collection("mentors")
+      const usersCollection = db.collection("users")
+
+      const mentor = {
+        id: Date.now().toString(),
+        userId,
+        languages: languages || [],
+        experience: experience || "beginner",
+        availability: availability || "weekends",
+        bio: bio || "",
+        rating: 5.0,
+        studentsCount: 0,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      }
+
+      await mentorsCollection.replaceOne({ userId }, mentor, { upsert: true })
+
+      // Update user profile to include mentor status
+      await usersCollection.updateOne(
+        { id: userId },
+        { $set: { isMentor: true } }
+      )
+
+      return Response.json({ mentor })
+    }
+
+    if (action === "findMentor") {
+      const { userId, language, experience } = data
+
+      const mentorsCollection = db.collection("mentors")
+
+      const query = {
+        userId: { $ne: userId },
+        isActive: true,
+        languages: { $in: [language] }
+      }
+
+      if (experience) {
+        query.experience = experience
+      }
+
+      const mentors = await mentorsCollection.find(query).limit(10).toArray()
+
+      return Response.json({ mentors })
+    }
+
+    if (action === "requestMentorship") {
+      const { studentId, mentorId, language, message } = data
+
+      const mentorshipRequest = {
+        id: Date.now().toString(),
+        studentId,
+        mentorId,
+        language,
+        message: message || "",
+        status: "pending",
+        createdAt: new Date().toISOString()
+      }
+
+      await mentorshipCollection.insertOne(mentorshipRequest)
+
+      return Response.json({ request: mentorshipRequest })
     }
 
     if (action === "createMentorship") {

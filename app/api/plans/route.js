@@ -1,4 +1,3 @@
-
 import clientPromise from "@/lib/mongodb"
 
 const PLANS = [
@@ -58,22 +57,34 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url)
     const action = searchParams.get("action")
-    
+
+    const client = await clientPromise
+    const db = client.db("sayHi")
+
     if (action === "getPlans") {
-      return Response.json({ plans: PLANS })
+      const plansCollection = db.collection("plans")
+
+      // Try to get plans from database first
+      let dbPlans = await plansCollection.find({}).toArray()
+
+      // If no plans in database, initialize with default plans
+      if (dbPlans.length === 0) {
+        await plansCollection.insertMany(PLANS)
+        dbPlans = PLANS
+      }
+
+      return Response.json({ plans: dbPlans })
     }
-    
+
     if (action === "getUserPlan") {
       const userId = searchParams.get("userId")
-      
-      const client = await clientPromise
-      const db = client.db("sayHi")
+
       const user = await db.collection("users").findOne({ id: userId })
-      
+
       const userPlan = PLANS.find(p => p.id === (user?.plan || "free"))
       return Response.json({ plan: userPlan })
     }
-    
+
     return Response.json({ plans: PLANS })
   } catch (error) {
     console.error("Plans API error:", error)
@@ -83,50 +94,67 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
-    const body = await req.json()
-    const { action, userId, planId } = body
-    
-    if (action === "upgradePlan") {
-      const client = await clientPromise
-      const db = client.db("sayHi")
-      
-      await db.collection("users").updateOne(
-        { id: userId },
-        { 
-          $set: { 
-            plan: planId,
-            planUpdatedAt: new Date().toISOString()
-          }
-        }
+    const { action, ...data } = await req.json()
+
+    const client = await clientPromise
+    const db = client.db("sayHi")
+    const userPlansCollection = db.collection("userPlans")
+    const teamsCollection = db.collection("teams")
+    const plansCollection = db.collection("plans")
+
+    if (action === "subscribeToPlan") {
+      const { userId, planId } = data
+
+      // Get the plan details from database first, fallback to PLANS array
+      let plan = await plansCollection.findOne({ id: planId })
+      if (!plan) {
+        plan = PLANS.find(p => p.id === planId)
+      }
+
+      if (!plan) {
+        return Response.json({ error: "Plan not found" }, { status: 404 })
+      }
+
+      // Create or update user plan
+      const userPlan = {
+        userId,
+        planId,
+        planName: plan.name,
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        isActive: true,
+        teamsCreated: 0,
+        maxTeams: plan.maxTeams || 1,
+        features: plan.features || []
+      }
+
+      await userPlansCollection.replaceOne(
+        { userId },
+        userPlan,
+        { upsert: true }
       )
-      
-      return Response.json({ success: true })
+
+      return Response.json({ userPlan })
     }
 
     if (action === "updatePlan") {
-      const { planName, updates } = body
-      const client = await clientPromise
-      const db = client.db("sayHi")
-      
-      // Update the plan in database (assuming you store plans in DB)
-      await db.collection("plans").updateOne(
-        { name: planName },
-        { $set: { ...updates, updatedAt: new Date().toISOString() } },
+      const { planId, updates } = data
+
+      const updatedPlan = {
+        ...updates,
+        id: planId,
+        updatedAt: new Date().toISOString()
+      }
+
+      await plansCollection.replaceOne(
+        { id: planId },
+        updatedPlan,
         { upsert: true }
       )
-      
-      return Response.json({ success: true })
+
+      return Response.json({ plan: updatedPlan })
     }
 
-    if (action === "deletePlan") {
-      const { planName } = body
-      const client = await clientPromise
-      const db = client.db("sayHi")
-      
-      await db.collection("plans").deleteOne({ name: planName })
-      return Response.json({ success: true })
-    }
-    
     return Response.json({ error: "Invalid action" }, { status: 400 })
   } catch (error) {
     console.error("Plans API error:", error)
