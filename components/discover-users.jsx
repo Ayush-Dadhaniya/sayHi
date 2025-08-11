@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserPlus, Globe, MapPin, MessageCircle, Filter, Search } from "lucide-react"
+import { UserPlus, Globe, MapPin, MessageCircle, Filter, Search, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
 
 // Placeholder for Admin functionality, replace with actual implementation
 const AdminPanel = ({ currentUser }) => {
@@ -196,7 +200,7 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
   const [activeView, setActiveView] = useState("discover"); // discover, findFriend
   const [searchQuery, setSearchQuery] = useState("");
   const [showMore, setShowMore] = useState(false);
-  
+
   // Filter states
   const [filters, setFilters] = useState({
     country: "",
@@ -239,7 +243,7 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
       setDisplayedUsers([]);
       return;
     }
-    
+
     try {
       setIsLoading(true);
       const response = await fetch(`/api/users?action=findFriend&searchTerm=${encodeURIComponent(searchQuery)}&userId=${currentUser.id}`);
@@ -252,11 +256,11 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
           const query = searchQuery.toLowerCase();
           const nameMatch = user.name?.toLowerCase().includes(query);
           const usernameMatch = user.username?.toLowerCase().includes(query);
-          
+
           // Only return if it's a direct/specific match
           return nameMatch || usernameMatch;
         }) || [];
-        
+
         setUsers(filteredUsers);
         setDisplayedUsers(filteredUsers);
       } else {
@@ -330,16 +334,17 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
     }
   };
 
-  // Handle the language learning error: check if question.options exists before mapping
-  const renderQuestionOptions = (options) => {
-    if (!options || !Array.isArray(options)) {
-      return <p className="text-sm text-gray-500">No options available.</p>;
+  // Handle the language learning error: check if user.language exists before mapping
+  const renderUserLanguage = (user) => {
+    if (!user.language) {
+      return <p className="text-sm text-gray-500">No language specified.</p>;
     }
-    return options.map((option, index) => (
-      <Button key={index} variant="outline" size="sm" className="px-3 py-1 text-xs">
-        {option}
-      </Button>
-    ));
+    return (
+      <Badge variant="secondary" className="text-xs">
+        <Globe className="h-3 w-3 mr-1" />
+        {user.language}
+      </Badge>
+    );
   };
 
 
@@ -365,7 +370,7 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
         </div>
         <div className="text-center py-8">
           <p className="text-red-500 mb-2">{error}</p>
-          <Button onClick={fetchUsers} size="sm" variant="outline">
+          <Button onClick={fetchNearbyUsers} size="sm" variant="outline">
             Try Again
           </Button>
         </div>
@@ -381,228 +386,138 @@ export default function DiscoverUsers({ currentUser, onSendRequest, onStartChat,
   return (
     <div className="space-y-4">
       {/* Navigation */}
-      <div className="flex gap-2 mb-4">
-        <Button
-          variant={activeView === "discover" ? "default" : "outline"}
-          onClick={() => {
-            setActiveView("discover");
-            setSearchQuery("");
-            setFilters({ country: "", language: "", name: "" });
-          }}
-        >
-          <Globe className="h-4 w-4 mr-2" />
-          Discover
-        </Button>
-        <Button
-          variant={activeView === "findFriend" ? "default" : "outline"}
-          onClick={() => setActiveView("findFriend")}
-        >
-          <Search className="h-4 w-4 mr-2" />
-          Find Friend
-        </Button>
-      </div>
+      <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="requests">Requests</TabsTrigger>
+          <TabsTrigger value="friends">Friends</TabsTrigger>
+        </TabsList>
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {activeView === "findFriend" ? "Find Friends" : "Discover People"}
-          </h1>
-          <p className="text-gray-600">
-            {activeView === "findFriend" ? "Search for specific users" : "Connect with people nearby"}
-          </p>
-        </div>
-        <Badge variant="secondary" className="text-sm">
-          {displayedUsers.length} people found
-        </Badge>
-      </div>
-
-      {/* Search and Filters */}
-      {activeView === "findFriend" && (
-        <div className="space-y-4 mb-6">
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="Search by username or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={searchUsers}>
-              <Search className="h-4 w-4 mr-2" />
-              Search
-            </Button>
+        <TabsContent value="requests" className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">Friend Requests</h1>
+              <p className="text-gray-600">Manage incoming and outgoing friend requests.</p>
+            </div>
           </div>
-        </div>
-      )}
+          {/* Placeholder for Request content */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Incoming Requests
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">List of incoming friend requests will appear here.</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {activeView === "discover" && (
-        <div className="space-y-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            {!showMore && users.length >= 10 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowMore(true);
-                  fetchNearbyUsers();
-                }}
-              >
-                Show More
+        <TabsContent value="friends" className="space-y-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">Find Friends</h1>
+              <p className="text-gray-600">Search for specific users to connect with.</p>
+            </div>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="Search by username or name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1"
+              />
+              <Button onClick={searchUsers}>
+                <Search className="h-4 w-4 mr-2" />
+                Search
               </Button>
-            )}
+            </div>
           </div>
+          
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+              <p className="text-gray-500 mt-2">Loading users...</p>
+            </div>
+          ) : displayedUsers.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">
+                No users found matching your search.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {displayedUsers.map((user) => (
+                <Card key={user.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold">{user.name}</h3>
+                          <p className="text-sm text-gray-600">@{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full ${user.isOnline ? "bg-green-500" : "bg-gray-400"}`} />
+                        <span className="text-xs text-gray-500">{user.isOnline ? "Online" : "Offline"}</span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {renderUserLanguage(user)}
+                      {user.region && (
+                        <Badge variant="outline" className="text-xs">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {user.region}
+                        </Badge>
+                      )}
+                    </div>
 
-          {showFilters && (
-            <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Country</label>
-                  <Input
-                    placeholder="Filter by country"
-                    value={filters.country}
-                    onChange={(e) => {
-                      const newFilters = { ...filters, country: e.target.value };
-                      setFilters(newFilters);
-                      applyFilters();
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Language</label>
-                  <Input
-                    placeholder="Filter by language"
-                    value={filters.language}
-                    onChange={(e) => {
-                      const newFilters = { ...filters, language: e.target.value };
-                      setFilters(newFilters);
-                      applyFilters();
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Name</label>
-                  <Input
-                    placeholder="Filter by name"
-                    value={filters.name}
-                    onChange={(e) => {
-                      const newFilters = { ...filters, name: e.target.value };
-                      setFilters(newFilters);
-                      applyFilters();
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">
-                  {displayedUsers.length} of {users.length} users shown
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFilters({ country: "", language: "", name: "" });
-                    setDisplayedUsers(users);
-                  }}
-                  disabled={!filters.country && !filters.language && !filters.name}
-                >
-                  Clear Filters
-                </Button>
-              </div>
+                    {user.bio && <p className="text-sm text-gray-600 mb-3">{user.bio}</p>}
+
+                    <div className="flex gap-2">
+                      {sentRequests.has(user.id) ? (
+                        <Button disabled size="sm" className="flex-1 bg-gray-100 text-gray-600">
+                          <UserPlus className="h-4 w-4 mr-1" />
+                          Request Sent
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleSendRequest(user.id)}
+                          size="sm"
+                          className="flex-1 bg-green-500 hover:bg-green-600"
+                        >
+                          <UserPlus className="h-4 w-4 mr-1" />
+                          Add Friend
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onStartChat?.(user)}
+                        className="hover:bg-blue-50"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           )}
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
 
-      {isLoading ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
-          <p className="text-gray-500 mt-2">Loading...</p>
-        </div>
-      ) : displayedUsers.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-gray-500">
-            {activeView === "findFriend" && searchQuery 
-              ? "No users found matching your search." 
-              : "No users found to discover."}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {displayedUsers.map((user) => (
-            <Card key={user.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold">{user.name}</h3>
-                      <p className="text-sm text-gray-600">@{user.username}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`w-2 h-2 rounded-full ${user.isOnline ? "bg-green-500" : "bg-gray-400"}`} />
-                    <span className="text-xs text-gray-500">{user.isOnline ? "Online" : "Offline"}</span>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {user.language && (
-                    <Badge variant="secondary" className="text-xs">
-                      <Globe className="h-3 w-3 mr-1" />
-                      {user.language}
-                    </Badge>
-                  )}
-                  {user.region && (
-                    <Badge variant="outline" className="text-xs">
-                      <MapPin className="h-3 w-3 mr-1" />
-                      {user.region}
-                    </Badge>
-                  )}
-                </div>
-
-                {user.bio && <p className="text-sm text-gray-600 mb-3">{user.bio}</p>}
-
-                <div className="flex gap-2">
-                  {sentRequests.has(user.id) ? (
-                    <Button disabled size="sm" className="flex-1 bg-gray-100 text-gray-600">
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Request Sent
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleSendRequest(user.id)}
-                      size="sm"
-                      className="flex-1 bg-green-500 hover:bg-green-600"
-                    >
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Add Friend
-                    </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onStartChat?.(user)}
-                    className="hover:bg-blue-50"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* This section was previously for "Discover" and has been removed as per the request. */}
+      {/* If you need a "Discover" section, it should be implemented separately or re-added with its own logic. */}
     </div>
   );
 }

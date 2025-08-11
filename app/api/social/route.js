@@ -297,7 +297,7 @@ export async function POST(req) {
     }
 
     if (action === "becomeMentor") {
-      const { userId, languages, experience, availability, bio } = data
+      const { userId, languages, skillLevel, experience, availability, bio } = data
 
       const mentorsCollection = db.collection("mentors")
       const usersCollection = db.collection("users")
@@ -305,8 +305,8 @@ export async function POST(req) {
       const mentor = {
         id: Date.now().toString(),
         userId,
-        languages: languages || [],
-        experience: experience || "beginner",
+        languages: Array.isArray(languages) ? languages : [languages].filter(Boolean),
+        experience: skillLevel || experience || "beginner",
         availability: availability || "weekends",
         bio: bio || "",
         rating: 5.0,
@@ -330,6 +330,7 @@ export async function POST(req) {
       const { userId, language, experience } = data
 
       const mentorsCollection = db.collection("mentors")
+      const usersCollection = db.collection("users")
 
       const query = {
         userId: { $ne: userId },
@@ -343,7 +344,20 @@ export async function POST(req) {
 
       const mentors = await mentorsCollection.find(query).limit(10).toArray()
 
-      return Response.json({ mentors })
+      // Get user details for each mentor
+      const mentorsWithDetails = await Promise.all(
+        mentors.map(async (mentor) => {
+          const user = await usersCollection.findOne({ id: mentor.userId })
+          return {
+            ...mentor,
+            name: user?.name || 'Unknown',
+            avatar: user?.avatar || '',
+            username: user?.username || ''
+          }
+        })
+      )
+
+      return Response.json({ mentors: mentorsWithDetails })
     }
 
     if (action === "requestMentorship") {

@@ -223,8 +223,21 @@ Click OK to continue...`)
         })
       })
       const data = await response.json()
-      if (data.mentors) {
-        setMentorships(data.mentors)
+      if (data.mentors && data.mentors.length > 0) {
+        // Create mentorship connections for found mentors
+        for (const mentor of data.mentors) {
+          await fetch('/api/social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'createMentorship',
+              mentorId: mentor.userId,
+              menteeId: currentUser.id,
+              language: currentUser.language || 'spanish'
+            })
+          })
+        }
+        fetchSocialData() // Refresh to show new mentorships
         alert(`Found ${data.mentors.length} mentors! Check your mentorship section.`)
       } else {
         alert('No mentors found at this time. Try again later!')
@@ -253,7 +266,7 @@ Click OK to continue...`)
         body: JSON.stringify({
           action: 'becomeMentor',
           userId: currentUser.id,
-          language: mentorData.languages[0], // Use first language
+          languages: mentorData.languages, // Send all languages
           skillLevel: mentorData.experience,
           bio: mentorData.bio,
           availability: mentorData.availability

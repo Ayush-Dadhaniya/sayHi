@@ -753,56 +753,74 @@ export default function AdminDashboard({ currentUser, onBack }) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Input
-                    placeholder="Plan name (e.g., premium)"
-                    value={newPlan.name}
-                    onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
-                  />
-                  <Input
-                    type="number"
-                    step="0.01"
-                    placeholder="Price"
-                    value={newPlan.price}
-                    onChange={(e) => setNewPlan({...newPlan, price: parseFloat(e.target.value) || 0})}
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Max Teams (-1 for unlimited)"
-                    value={newPlan.maxTeams}
-                    onChange={(e) => setNewPlan({...newPlan, maxTeams: parseInt(e.target.value)})}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    type="number"
-                    placeholder="Max Members (-1 for unlimited)"
-                    value={newPlan.maxMembers}
-                    onChange={(e) => setNewPlan({...newPlan, maxMembers: parseInt(e.target.value)})}
-                  />
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={newPlan.hasVideoCall}
-                        onChange={(e) => setNewPlan({...newPlan, hasVideoCall: e.target.checked})}
-                      />
-                      Video Calls
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={newPlan.hasTranslation}
-                        onChange={(e) => setNewPlan({...newPlan, hasTranslation: e.target.checked})}
-                      />
-                      Translation
-                    </label>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Plan Name</label>
+                    <Input
+                      placeholder="e.g., premium, enterprise"
+                      value={newPlan.name}
+                      onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Monthly Price (USD)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g., 9.99"
+                      value={newPlan.price}
+                      onChange={(e) => setNewPlan({...newPlan, price: parseFloat(e.target.value) || 0})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Max Teams</label>
+                    <Input
+                      type="number"
+                      placeholder="Number of teams (-1 = unlimited)"
+                      value={newPlan.maxTeams}
+                      onChange={(e) => setNewPlan({...newPlan, maxTeams: parseInt(e.target.value)})}
+                    />
                   </div>
                 </div>
-                <Input
-                  placeholder="Features (comma separated)"
-                  value={newPlan.features.join(', ')}
-                  onChange={(e) => setNewPlan({...newPlan, features: e.target.value.split(', ').filter(f => f.trim())})}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Max Members per Team</label>
+                    <Input
+                      type="number"
+                      placeholder="Number of members (-1 = unlimited)"
+                      value={newPlan.maxMembers}
+                      onChange={(e) => setNewPlan({...newPlan, maxMembers: parseInt(e.target.value)})}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Premium Features</label>
+                    <div className="flex gap-4 pt-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={newPlan.hasVideoCall}
+                          onChange={(e) => setNewPlan({...newPlan, hasVideoCall: e.target.checked})}
+                        />
+                        Video Calls
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={newPlan.hasTranslation}
+                          onChange={(e) => setNewPlan({...newPlan, hasTranslation: e.target.checked})}
+                        />
+                        Translation
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Feature List</label>
+                  <Input
+                    placeholder="e.g., AI Tutoring, Voice Practice, Analytics, Priority Support"
+                    value={newPlan.features.join(', ')}
+                    onChange={(e) => setNewPlan({...newPlan, features: e.target.value.split(', ').filter(f => f.trim())})}
+                  />
+                </div>
                 <Button onClick={handleCreatePlan} disabled={loading}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Plan
