@@ -137,6 +137,25 @@ export async function POST(req) {
       return Response.json({ userPlan })
     }
 
+    if (action === "createPlan") {
+      const { id, name, price, features, maxTeams, maxMembers, hasVideoCall, hasTranslation } = data
+
+      const newPlan = {
+        id,
+        name,
+        price,
+        features,
+        maxTeams,
+        maxMembers,
+        hasVideoCall,
+        hasTranslation,
+        createdAt: new Date().toISOString()
+      }
+
+      await plansCollection.insertOne(newPlan)
+      return Response.json({ plan: newPlan })
+    }
+
     if (action === "updatePlan") {
       const { planId, updates } = data
 

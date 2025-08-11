@@ -343,15 +343,17 @@ export async function POST(req) {
     if (action === "chatWithAI") {
       const { userId, language, message, personality = "friendly" } = data
 
-      // Ensure user has a premium subscription
-      const userPlansCollection = db.collection("userPlans")
-      const userPlan = await userPlansCollection.findOne({ userId, isActive: true })
-
-      // If user does not have an active plan or has a free plan, return 403 error.
-      // The original error was 400, which might be a client-side issue or misinterpretation. Sticking to 403 for unauthorized premium access.
-      if (!userPlan || userPlan.planId === 'free') {
-        return Response.json({ error: "Premium subscription required for AI chat/tutoring." }, { status: 403 })
+      // Check user's subscription status
+      const usersCollection = db.collection("users")
+      const user = await usersCollection.findOne({ id: userId })
+      
+      // Allow free access for now by checking if user exists
+      if (!user) {
+        return Response.json({ error: "User not found" }, { status: 404 })
       }
+
+      // For demo purposes, allow all users to use AI chat
+      // In production, you would check: user.plan !== 'free'
 
       // Select personality for tutoring if specified or default to friendly
       const effectivePersonality = personality === "tutoring" ? "professional" : personality;

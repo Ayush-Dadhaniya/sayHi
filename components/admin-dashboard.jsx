@@ -33,6 +33,15 @@ export default function AdminDashboard({ currentUser, onBack }) {
   const [viewingLesson, setViewingLesson] = useState(null)
   const [editingPlan, setEditingPlan] = useState(null)
   const [plans, setPlans] = useState([])
+  const [newPlan, setNewPlan] = useState({
+    name: "",
+    price: 0,
+    features: [],
+    maxTeams: 1,
+    maxMembers: 5,
+    hasVideoCall: false,
+    hasTranslation: false
+  })
 
   // Create Enterprise Form
   const [newEnterprise, setNewEnterprise] = useState({
@@ -298,6 +307,39 @@ export default function AdminDashboard({ currentUser, onBack }) {
       }
     } catch (error) {
       console.error("Failed to delete lesson:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreatePlan = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "createPlan",
+          ...newPlan,
+          id: newPlan.name
+        })
+      })
+
+      if (response.ok) {
+        fetchPlans()
+        setNewPlan({
+          name: "",
+          price: 0,
+          features: [],
+          maxTeams: 1,
+          maxMembers: 5,
+          hasVideoCall: false,
+          hasTranslation: false
+        })
+        alert("Plan created successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to create plan:", error)
     } finally {
       setLoading(false)
     }
@@ -703,80 +745,147 @@ export default function AdminDashboard({ currentUser, onBack }) {
         )}
 
         {activeTab === "plans" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription Plans Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {plans.map(plan => (
-                  <div key={plan.name} className="p-4 border rounded-lg">
-                    {editingPlan === plan.name ? (
-                      <div className="space-y-3">
-                        <Input
-                          value={plan.price || 0}
-                          onChange={(e) => {
-                            const updatedPlans = plans.map(p => 
-                              p.name === plan.name ? {...p, price: parseFloat(e.target.value) || 0} : p
-                            )
-                            setPlans(updatedPlans)
-                          }}
-                          type="number"
-                          step="0.01"
-                          placeholder="Price"
-                        />
-                        <Input
-                          value={Array.isArray(plan.features) ? plan.features.join(', ') : ''}
-                          onChange={(e) => {
-                            const updatedPlans = plans.map(p => 
-                              p.name === plan.name ? {...p, features: e.target.value.split(', ').filter(f => f.trim())} : p
-                            )
-                            setPlans(updatedPlans)
-                          }}
-                          placeholder="Features (comma separated)"
-                        />
-                        <div className="flex gap-2">
-                          <Button onClick={() => {
-                            const currentPlan = plans.find(p => p.name === plan.name)
-                            handleUpdatePlan(plan.name, {
-                              price: currentPlan.price,
-                              features: currentPlan.features
-                            })
-                          }}>
-                            <Save className="h-4 w-4 mr-2" />
-                            Save
-                          </Button>
-                          <Button variant="outline" onClick={() => setEditingPlan(null)}>
-                            Cancel
-                          </Button>
-                          <Button 
-                            variant="destructive" 
-                            onClick={() => handleDeletePlan(plan.name)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold capitalize">{plan.name} Plan</h3>
-                          <p className="text-gray-600">${plan.price}/month</p>
-                          <p className="text-sm text-gray-500">{plan.features?.join(', ')}</p>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setEditingPlan(plan.name)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+          <div className="space-y-6">
+            {/* Create New Plan */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Create New Plan</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    placeholder="Plan name (e.g., premium)"
+                    value={newPlan.name}
+                    onChange={(e) => setNewPlan({...newPlan, name: e.target.value})}
+                  />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Price"
+                    value={newPlan.price}
+                    onChange={(e) => setNewPlan({...newPlan, price: parseFloat(e.target.value) || 0})}
+                  />
+                  <Input
+                    type="number"
+                    placeholder="Max Teams (-1 for unlimited)"
+                    value={newPlan.maxTeams}
+                    onChange={(e) => setNewPlan({...newPlan, maxTeams: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    type="number"
+                    placeholder="Max Members (-1 for unlimited)"
+                    value={newPlan.maxMembers}
+                    onChange={(e) => setNewPlan({...newPlan, maxMembers: parseInt(e.target.value)})}
+                  />
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newPlan.hasVideoCall}
+                        onChange={(e) => setNewPlan({...newPlan, hasVideoCall: e.target.checked})}
+                      />
+                      Video Calls
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={newPlan.hasTranslation}
+                        onChange={(e) => setNewPlan({...newPlan, hasTranslation: e.target.checked})}
+                      />
+                      Translation
+                    </label>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+                <Input
+                  placeholder="Features (comma separated)"
+                  value={newPlan.features.join(', ')}
+                  onChange={(e) => setNewPlan({...newPlan, features: e.target.value.split(', ').filter(f => f.trim())})}
+                />
+                <Button onClick={handleCreatePlan} disabled={loading}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Plan
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Existing Plans */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Subscription Plans Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {plans.map(plan => (
+                    <div key={plan.name} className="p-4 border rounded-lg">
+                      {editingPlan === plan.name ? (
+                        <div className="space-y-3">
+                          <Input
+                            value={plan.price || 0}
+                            onChange={(e) => {
+                              const updatedPlans = plans.map(p => 
+                                p.name === plan.name ? {...p, price: parseFloat(e.target.value) || 0} : p
+                              )
+                              setPlans(updatedPlans)
+                            }}
+                            type="number"
+                            step="0.01"
+                            placeholder="Price"
+                          />
+                          <Input
+                            value={Array.isArray(plan.features) ? plan.features.join(', ') : ''}
+                            onChange={(e) => {
+                              const updatedPlans = plans.map(p => 
+                                p.name === plan.name ? {...p, features: e.target.value.split(', ').filter(f => f.trim())} : p
+                              )
+                              setPlans(updatedPlans)
+                            }}
+                            placeholder="Features (comma separated)"
+                          />
+                          <div className="flex gap-2">
+                            <Button onClick={() => {
+                              const currentPlan = plans.find(p => p.name === plan.name)
+                              handleUpdatePlan(plan.name, {
+                                price: currentPlan.price,
+                                features: currentPlan.features
+                              })
+                            }}>
+                              <Save className="h-4 w-4 mr-2" />
+                              Save
+                            </Button>
+                            <Button variant="outline" onClick={() => setEditingPlan(null)}>
+                              Cancel
+                            </Button>
+                            <Button 
+                              variant="destructive" 
+                              onClick={() => handleDeletePlan(plan.name)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-semibold capitalize">{plan.name} Plan</h3>
+                            <p className="text-gray-600">${plan.price}/month</p>
+                            <p className="text-sm text-gray-500">{plan.features?.join(', ')}</p>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setEditingPlan(plan.name)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Enterprise Details Modal */}

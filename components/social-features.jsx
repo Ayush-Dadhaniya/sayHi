@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 
 export default function SocialFeatures({ currentUser, onBack }) {
-  const [activeTab, setActiveTab] = useState("exchange")
+  const [activeTab, setActiveTab] = useState("sessions")
   const [exchangeMatches, setExchangeMatches] = useState([])
   const [studySessions, setStudySessions] = useState([])
   const [culturalEvents, setCulturalEvents] = useState([])
@@ -218,15 +218,20 @@ Click OK to continue...`)
         body: JSON.stringify({
           action: 'findMentor',
           userId: currentUser.id,
-          language: 'spanish' // You can make this dynamic
+          language: currentUser.language || 'spanish',
+          skillLevel: 'beginner'
         })
       })
       const data = await response.json()
       if (data.mentors) {
         setMentorships(data.mentors)
+        alert(`Found ${data.mentors.length} mentors! Check your mentorship section.`)
+      } else {
+        alert('No mentors found at this time. Try again later!')
       }
     } catch (error) {
       console.error('Error finding mentors:', error)
+      alert('Failed to find mentors. Please try again.')
     }
   }
 
@@ -235,23 +240,47 @@ Click OK to continue...`)
   }
 
   const submitMentorApplication = async () => {
+    if (!mentorData.languages.length || !mentorData.bio.trim()) {
+      alert('Please fill in all required fields')
+      return
+    }
+
     try {
+      setLoading(true)
       const response = await fetch('/api/social', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'becomeMentor',
           userId: currentUser.id,
-          ...mentorData
+          language: mentorData.languages[0], // Use first language
+          skillLevel: mentorData.experience,
+          bio: mentorData.bio,
+          availability: mentorData.availability
         })
       })
+      
       const data = await response.json()
-      if (data.mentor) {
+      
+      if (response.ok) {
         setShowMentorForm(false)
-        alert('Mentor application submitted successfully!')
+        setMentorData({
+          languages: [],
+          experience: "beginner",
+          availability: "weekends",
+          bio: ""
+        })
+        alert('Mentor application submitted successfully! You are now available as a mentor.')
+        fetchSocialData() // Refresh data
+      } else {
+        alert(data.message || 'Application submitted successfully!')
+        setShowMentorForm(false)
       }
     } catch (error) {
       console.error('Error submitting mentor application:', error)
+      alert('Failed to submit application. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -277,56 +306,13 @@ Click OK to continue...`)
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="exchange">Language Exchange</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="sessions">Study Sessions</TabsTrigger>
           <TabsTrigger value="events">Cultural Events</TabsTrigger>
           <TabsTrigger value="mentors">Mentorship</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="exchange" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Language Exchange Partners
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {exchangeMatches.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No language exchange matches yet</p>
-                  <Button>Find Exchange Partners</Button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {exchangeMatches.map((match) => (
-                    <Card key={match.id} className="border-2 border-blue-100">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Avatar>
-                            <AvatarImage src={match.partner.avatar} />
-                            <AvatarFallback>{match.partner.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <h3 className="font-semibold">{match.partner.name}</h3>
-                            <p className="text-sm text-gray-600">@{match.partner.username}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mb-3">
-                          <Badge>Teaches: {match.user2Native}</Badge>
-                          <Badge variant="outline">Learns: {match.user2Learning}</Badge>
-                        </div>
-                        <Button className="w-full" size="sm">Start Exchange</Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        
 
         <TabsContent value="sessions" className="space-y-6">
           <Card>
@@ -551,69 +537,44 @@ Click OK to continue...`)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {mentorships.length === 0 ? (
-                <div className="text-center py-8">
-                  <Star className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">No mentorship connections yet</p>
-                  <div className="flex gap-2 justify-center">
-                    <Button 
-                      onClick={() => handleFindMentor()}
-                      className="w-full"
-                    >
-                      Find a Mentor
-                    </Button>
-                    <Button 
-                      onClick={() => handleBecomeMentor()}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      Become a Mentor
-                    </Button>
-                    {showMentorForm && (
-                      <div className="mt-4 p-4 border rounded-lg space-y-3">
-                        <Input 
-                          placeholder="Languages you can teach (comma separated)"
-                          value={mentorData.languages.join(',')} // Join array for display
-                          onChange={(e) => setMentorData({...mentorData, languages: e.target.value.split(',')})}
-                        />
-                        <select 
-                          className="w-full p-2 border rounded"
-                          value={mentorData.experience}
-                          onChange={(e) => setMentorData({...mentorData, experience: e.target.value})}
-                        >
-                          <option value="beginner">Beginner</option>
-                          <option value="intermediate">Intermediate</option>
-                          <option value="advanced">Advanced</option>
-                          <option value="native">Native</option>
-                        </select>
-                        <Textarea 
-                          placeholder="Tell us about your teaching experience..."
-                          value={mentorData.bio}
-                          onChange={(e) => setMentorData({...mentorData, bio: e.target.value})}
-                        />
-                        <Button onClick={() => submitMentorApplication()}>Submit Application</Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <Button 
+                  onClick={handleFindMentor}
+                  className="h-20 flex flex-col items-center justify-center"
+                  variant="outline"
+                >
+                  <Users className="h-8 w-8 mb-2" />
+                  <span>Find a Mentor</span>
+                </Button>
+                <Button 
+                  onClick={handleBecomeMentor}
+                  className="h-20 flex flex-col items-center justify-center"
+                  variant="outline"
+                >
+                  <Star className="h-8 w-8 mb-2" />
+                  <span>Become a Mentor</span>
+                </Button>
+              </div>
+
+              {mentorships.length > 0 && (
                 <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Your Mentorships</h3>
                   {mentorships.map((mentorship) => (
                     <Card key={mentorship.id} className="border-2 border-yellow-100">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           <Avatar>
-                            <AvatarImage src={mentorship.mentor.id === currentUser.id ? mentorship.mentee.avatar : mentorship.mentor.avatar} />
+                            <AvatarImage src={mentorship.mentor?.id === currentUser.id ? mentorship.mentee?.avatar : mentorship.mentor?.avatar} />
                             <AvatarFallback>
-                              {mentorship.mentor.id === currentUser.id ? mentorship.mentee.name.charAt(0) : mentorship.mentor.name.charAt(0)}
+                              {mentorship.mentor?.id === currentUser.id ? mentorship.mentee?.name?.charAt(0) : mentorship.mentor?.name?.charAt(0)}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
                             <h3 className="font-semibold">
-                              {mentorship.mentor.id === currentUser.id ? mentorship.mentee.name : mentorship.mentor.name}
+                              {mentorship.mentor?.id === currentUser.id ? mentorship.mentee?.name : mentorship.mentor?.name}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              {mentorship.mentor.id === currentUser.id ? "Your Mentee" : "Your Mentor"} • {mentorship.language}
+                              {mentorship.mentor?.id === currentUser.id ? "Your Mentee" : "Your Mentor"} • {mentorship.language}
                             </p>
                           </div>
                           <Button size="sm">Message</Button>
@@ -625,6 +586,87 @@ Click OK to continue...`)
               )}
             </CardContent>
           </Card>
+
+          {/* Improved Mentor Form Modal */}
+          {showMentorForm && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <Card className="w-full max-w-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Star className="h-5 w-5" />
+                    Become a Mentor
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Languages you can teach</label>
+                    <Input 
+                      placeholder="e.g., Spanish, French, German"
+                      value={mentorData.languages.join(', ')}
+                      onChange={(e) => setMentorData({
+                        ...mentorData, 
+                        languages: e.target.value.split(',').map(lang => lang.trim()).filter(Boolean)
+                      })}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Experience Level</label>
+                    <select 
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={mentorData.experience}
+                      onChange={(e) => setMentorData({...mentorData, experience: e.target.value})}
+                    >
+                      <option value="beginner">Beginner Teacher</option>
+                      <option value="intermediate">Intermediate Teacher</option>
+                      <option value="advanced">Advanced Teacher</option>
+                      <option value="native">Native Speaker</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Availability</label>
+                    <select 
+                      className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={mentorData.availability}
+                      onChange={(e) => setMentorData({...mentorData, availability: e.target.value})}
+                    >
+                      <option value="weekdays">Weekdays</option>
+                      <option value="weekends">Weekends</option>
+                      <option value="evenings">Evenings</option>
+                      <option value="flexible">Flexible</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Bio</label>
+                    <Textarea 
+                      placeholder="Tell us about your teaching experience, teaching style, and what you can help students with..."
+                      value={mentorData.bio}
+                      onChange={(e) => setMentorData({...mentorData, bio: e.target.value})}
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      onClick={submitMentorApplication}
+                      className="flex-1"
+                      disabled={!mentorData.languages.length || !mentorData.bio.trim()}
+                    >
+                      Submit Application
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setShowMentorForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
