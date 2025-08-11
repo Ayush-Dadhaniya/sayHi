@@ -30,7 +30,7 @@ const LANGUAGES = [
   { id: 3, name: "german", displayName: "German", flag: "🇩🇪", difficulty: "Intermediate", color: "from-black to-red-500" },
   { id: 4, name: "japanese", displayName: "Japanese", flag: "🇯🇵", difficulty: "Advanced", color: "from-red-600 to-white" },
   { id: 5, name: "chinese", displayName: "Chinese", flag: "🇨🇳", difficulty: "Advanced", color: "from-red-600 to-yellow-400" },
-  { id: 6, name: "italian", displayName: "Italian", flag: "🇮🇹", difficulty: "Beginner", color: "from-green-500 to-white" }or: "from-green-500 to-red-500" },
+  { id: 6, name: "italian", displayName: "Italian", flag: "🇮🇹", difficulty: "Beginner", color: "from-green-500 to-white" },
 ]
 
 const COURSE_TYPES = [
