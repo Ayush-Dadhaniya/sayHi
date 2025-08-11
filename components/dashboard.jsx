@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  Users, 
-  UserPlus, 
-  MessageCircle, 
-  Globe, 
-  MapPin, 
-  Bell, 
-  Settings, 
+import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Users,
+  UserPlus,
+  MessageCircle,
+  Globe,
+  MapPin,
+  Bell,
+  Settings,
   Search,
   TrendingUp,
   Heart,
@@ -31,24 +31,30 @@ import {
   Paperclip,
   Building,
   Shield,
-  Crown
-} from "lucide-react"
+  Crown,
+} from "lucide-react";
 
-import DiscoverUsers from "@/components/discover-users"
-import FriendRequests from "@/components/friend-requests"
-import FriendsList from "@/components/friends-list"
-import VideoCall from "@/components/video-call"
-import DatingMode from "@/components/dating-mode"
-import LanguageLearning from "@/components/language-learning"
-import AdminDashboard from "@/components/admin-dashboard"
-import TeamsDashboard from "@/components/teams-dashboard"
-import SubscriptionPlans from "@/components/subscription-plans"
-import GamificationDashboard from "@/components/gamification-dashboard"
-import SocialFeatures from "@/components/social-features"
-import PremiumFeatures from "@/components/premium-features"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import React from "react"
-import ChatInterface from "@/components/chat-interface"
+import DiscoverUsers from "@/components/discover-users";
+import FriendRequests from "@/components/friend-requests";
+import FriendsList from "@/components/friends-list";
+import VideoCall from "@/components/video-call";
+import DatingMode from "@/components/dating-mode";
+import LanguageLearning from "@/components/language-learning";
+import AdminDashboard from "@/components/admin-dashboard";
+import TeamsDashboard from "@/components/teams-dashboard";
+import SubscriptionPlans from "@/components/subscription-plans";
+import GamificationDashboard from "@/components/gamification-dashboard";
+import SocialFeatures from "@/components/social-features";
+import PremiumFeatures from "@/components/premium-features";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import React from "react";
+import ChatInterface from "@/components/chat-interface";
 
 const LANGUAGES = [
   "English",
@@ -67,7 +73,7 @@ const LANGUAGES = [
   "Dutch",
   "Swedish",
   "Turkish",
-]
+];
 
 const REGIONS = [
   "United States",
@@ -88,178 +94,180 @@ const REGIONS = [
   "Canada",
   "Australia",
   "Mexico",
-]
+];
 
 export default function Dashboard({ currentUser, onLogout }) {
-  const [activeView, setActiveView] = useState("discover")
-  const [showProfile, setShowProfile] = useState(false)
-  const [editMode, setEditMode] = useState(false)
-  const [editProfile, setEditProfile] = useState(null)
-  const [avatarFile, setAvatarFile] = useState(null)
-  const [saving, setSaving] = useState(false)
-  const [notifications, setNotifications] = useState([])
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [loadingNotifications, setLoadingNotifications] = useState(false)
-  const [friendsCount, setFriendsCount] = useState(0)
-  const [activeChat, setActiveChat] = useState(null)
-  const [activeVideoCall, setActiveVideoCall] = useState(null)
-  const [showDatingMode, setShowDatingMode] = useState(false)
-  const [showLanguageLearning, setShowLanguageLearning] = useState(false)
-  const [showAdminDashboard, setShowAdminDashboard] = useState(false)
-  const [showTeamsDashboard, setShowTeamsDashboard] = useState(false)
-  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false)
-  const [showGamification, setShowGamification] = useState(false)
-  const [showSocialFeatures, setShowSocialFeatures] = useState(false)
-  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false)
-  const fileInputRef = React.useRef(null)
+  const [activeView, setActiveView] = useState("discover");
+  const [showProfile, setShowProfile] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editProfile, setEditProfile] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [friendsCount, setFriendsCount] = useState(0);
+  const [activeChat, setActiveChat] = useState(null);
+  const [activeVideoCall, setActiveVideoCall] = useState(null);
+  const [showDatingMode, setShowDatingMode] = useState(false);
+  const [showLanguageLearning, setShowLanguageLearning] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
+  const [showTeamsDashboard, setShowTeamsDashboard] = useState(false);
+  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
+  const [showGamification, setShowGamification] = useState(false);
+  const [showSocialFeatures, setShowSocialFeatures] = useState(false);
+  const [showPremiumFeatures, setShowPremiumFeatures] = useState(false);
+  const fileInputRef = React.useRef(null);
 
   // Handle starting a chat
   const handleStartChat = (chatPartner) => {
-    setActiveChat(chatPartner)
-  }
+    setActiveChat(chatPartner);
+  };
 
   // Handle going back from chat
   const handleBackFromChat = () => {
-    setActiveChat(null)
-  }
+    setActiveChat(null);
+  };
 
   // Handle video call
   const handleStartVideoCall = (chatPartner) => {
-    setActiveVideoCall(chatPartner)
-  }
+    setActiveVideoCall(chatPartner);
+  };
 
   const handleEndVideoCall = () => {
-    setActiveVideoCall(null)
-  }
+    setActiveVideoCall(null);
+  };
 
   // Handle dating mode
   const handleShowDatingMode = () => {
-    setShowDatingMode(true)
-  }
+    setShowDatingMode(true);
+  };
 
   const handleBackFromDatingMode = () => {
-    setShowDatingMode(false)
-  }
+    setShowDatingMode(false);
+  };
 
   // Handle language learning
   const handleBackFromLanguageLearning = () => {
-    setShowLanguageLearning(false)
-  }
+    setShowLanguageLearning(false);
+  };
 
   // Handle admin dashboard
   const handleBackFromAdmin = () => {
-    setShowAdminDashboard(false)
-  }
+    setShowAdminDashboard(false);
+  };
 
   // Handle teams dashboard
   const handleBackFromTeams = () => {
-    setShowTeamsDashboard(false)
-  }
+    setShowTeamsDashboard(false);
+  };
 
   // Handle subscription plans
   const handleBackFromPlans = () => {
-    setShowSubscriptionPlans(false)
-  }
+    setShowSubscriptionPlans(false);
+  };
 
   // Handle gamification
   const handleBackFromGamification = () => {
-    setShowGamification(false)
-  }
+    setShowGamification(false);
+  };
 
   // Handle social features
   const handleBackFromSocial = () => {
-    setShowSocialFeatures(false)
-  }
+    setShowSocialFeatures(false);
+  };
 
   // Handle premium features
   const handleBackFromPremium = () => {
-    setShowPremiumFeatures(false)
-  }
+    setShowPremiumFeatures(false);
+  };
 
   // Fetch friends count
   useEffect(() => {
     async function fetchFriendsCount() {
       try {
-        const response = await fetch(`/api/users?action=friends&userId=${currentUser.id}`)
-        const data = await response.json()
+        const response = await fetch(
+          `/api/users?action=friends&userId=${currentUser.id}`,
+        );
+        const data = await response.json();
         if (data.friends) {
-          setFriendsCount(data.friends.length)
+          setFriendsCount(data.friends.length);
         }
       } catch (error) {
-        console.error("Failed to fetch friends count:", error)
+        console.error("Failed to fetch friends count:", error);
       }
     }
 
     if (currentUser?.id) {
-      fetchFriendsCount()
+      fetchFriendsCount();
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id]);
 
   // Fetch notifications
   useEffect(() => {
     async function fetchNotifications() {
-      setLoadingNotifications(true)
+      setLoadingNotifications(true);
       try {
-        const token = localStorage.getItem("token")
+        const token = localStorage.getItem("token");
         const res = await fetch("/api/notifications", {
           headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        if (data.notifications) setNotifications(data.notifications)
+        });
+        const data = await res.json();
+        if (data.notifications) setNotifications(data.notifications);
       } catch (e) {
         // Optionally handle error
       } finally {
-        setLoadingNotifications(false)
+        setLoadingNotifications(false);
       }
     }
-    if (showNotifications) fetchNotifications()
-  }, [showNotifications])
+    if (showNotifications) fetchNotifications();
+  }, [showNotifications]);
 
   // Auto-refresh notifications every 30 seconds
   useEffect(() => {
     const interval = setInterval(async () => {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       if (token) {
         try {
           const res = await fetch("/api/notifications", {
             headers: { Authorization: `Bearer ${token}` },
-          })
-          const data = await res.json()
-          if (data.notifications) setNotifications(data.notifications)
+          });
+          const data = await res.json();
+          if (data.notifications) setNotifications(data.notifications);
         } catch (e) {
           // Silently handle error
         }
       }
-    }, 30000) // 30 seconds
+    }, 30000); // 30 seconds
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   // Cleanup old notifications every hour
   useEffect(() => {
     const cleanupInterval = setInterval(async () => {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       if (token) {
         try {
           // This will trigger the cleanup in the API
           await fetch("/api/notifications", {
             headers: { Authorization: `Bearer ${token}` },
-          })
+          });
         } catch (e) {
           // Silently handle error
         }
       }
-    }, 3600000) // 1 hour
+    }, 3600000); // 1 hour
 
-    return () => clearInterval(cleanupInterval)
-  }, [])
+    return () => clearInterval(cleanupInterval);
+  }, []);
 
-  const unreadCount = notifications.filter(n => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const handleMarkRead = async (notificationId) => {
     try {
-      console.log("Marking notification as read:", notificationId)
-      const token = localStorage.getItem("token")
+      console.log("Marking notification as read:", notificationId);
+      const token = localStorage.getItem("token");
       const response = await fetch("/api/notifications", {
         method: "PATCH",
         headers: {
@@ -267,75 +275,117 @@ export default function Dashboard({ currentUser, onLogout }) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ notificationId }),
-      })
+      });
 
-      console.log("Response status:", response.status)
+      console.log("Response status:", response.status);
 
       if (response.ok) {
-        console.log("Successfully marked as read")
+        console.log("Successfully marked as read");
         // Update local state to mark as read
-        setNotifications((prev) => prev.map(n => n._id === notificationId ? { ...n, read: true } : n))
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n._id === notificationId ? { ...n, read: true } : n,
+          ),
+        );
 
         // Refresh notifications to get updated list (this will also clean up old ones)
         const refreshResponse = await fetch("/api/notifications", {
           headers: { Authorization: `Bearer ${token}` },
-        })
-        const refreshData = await refreshResponse.json()
+        });
+        const refreshData = await refreshResponse.json();
         if (refreshData.notifications) {
-          setNotifications(refreshData.notifications)
+          setNotifications(refreshData.notifications);
         }
       } else {
-        const errorData = await response.json()
-        console.error("Failed to mark as read:", errorData)
+        const errorData = await response.json();
+        console.error("Failed to mark as read:", errorData);
       }
     } catch (error) {
-      console.error("Failed to mark notification as read:", error)
+      console.error("Failed to mark notification as read:", error);
     }
-  }
+  };
 
   // Render video call if active
   if (activeVideoCall) {
-    return <VideoCall currentUser={currentUser} chatPartner={activeVideoCall} onEndCall={handleEndVideoCall} />
+    return (
+      <VideoCall
+        currentUser={currentUser}
+        chatPartner={activeVideoCall}
+        onEndCall={handleEndVideoCall}
+      />
+    );
   }
 
   // Render dating mode if active
   if (showDatingMode) {
-    return <DatingMode currentUser={currentUser} onBack={handleBackFromDatingMode} onStartChat={handleStartChat} />
+    return (
+      <DatingMode
+        currentUser={currentUser}
+        onBack={handleBackFromDatingMode}
+        onStartChat={handleStartChat}
+      />
+    );
   }
 
   // Render language learning if active
   if (showLanguageLearning) {
-    return <LanguageLearning currentUser={currentUser} onBack={handleBackFromLanguageLearning} />
+    return (
+      <LanguageLearning
+        currentUser={currentUser}
+        onBack={handleBackFromLanguageLearning}
+      />
+    );
   }
 
   // Render admin dashboard if active and user is admin
   if (showAdminDashboard && currentUser.isAdmin) {
-    return <AdminDashboard currentUser={currentUser} onBack={handleBackFromAdmin} />
+    return (
+      <AdminDashboard currentUser={currentUser} onBack={handleBackFromAdmin} />
+    );
   }
 
   // Render teams dashboard if active
   if (showTeamsDashboard) {
-    return <TeamsDashboard currentUser={currentUser} onBack={handleBackFromTeams} />
+    return (
+      <TeamsDashboard currentUser={currentUser} onBack={handleBackFromTeams} />
+    );
   }
 
   // Render subscription plans if active
   if (showSubscriptionPlans) {
-    return <SubscriptionPlans currentUser={currentUser} onBack={handleBackFromPlans} />
+    return (
+      <SubscriptionPlans
+        currentUser={currentUser}
+        onBack={handleBackFromPlans}
+      />
+    );
   }
 
   // Render gamification if active
   if (showGamification) {
-    return <GamificationDashboard currentUser={currentUser} onBack={handleBackFromGamification} />
+    return (
+      <GamificationDashboard
+        currentUser={currentUser}
+        onBack={handleBackFromGamification}
+      />
+    );
   }
 
   // Render social features if active
   if (showSocialFeatures) {
-    return <SocialFeatures currentUser={currentUser} onBack={handleBackFromSocial} />
+    return (
+      <SocialFeatures currentUser={currentUser} onBack={handleBackFromSocial} />
+    );
   }
 
   // Render premium features if active
   if (showPremiumFeatures) {
-    return <PremiumFeatures currentUser={currentUser} onBack={handleBackFromPremium} />
+    return (
+      <PremiumFeatures
+        currentUser={currentUser}
+        onBack={handleBackFromPremium}
+      />
+    );
   }
 
   return (
@@ -345,9 +395,9 @@ export default function Dashboard({ currentUser, onLogout }) {
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between min-h-[72px]">
           {/* Logo and Brand */}
           <div className="flex items-center gap-4">
-            <img 
-              src="/logo.png" 
-              alt="SayHi Logo" 
+            <img
+              src="/logo.png"
+              alt="SayHi Logo"
               className="h-16 rounded-lg object-contain"
               style={{ minHeight: 56, minWidth: 56 }}
             />
@@ -358,7 +408,12 @@ export default function Dashboard({ currentUser, onLogout }) {
           <div className="flex items-center gap-4">
             {/* Notification Bell */}
             <div className="relative">
-              <Button variant="ghost" size="sm" className="relative" onClick={() => setShowNotifications(v => !v)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="relative"
+                onClick={() => setShowNotifications((v) => !v)}
+              >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 text-xs font-medium text-red-600 bg-white rounded-full w-4 h-4 flex items-center justify-center">
@@ -368,11 +423,17 @@ export default function Dashboard({ currentUser, onLogout }) {
               </Button>
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-white shadow-lg rounded-lg border z-50 max-h-96 overflow-y-auto">
-                  <div className="p-3 border-b font-semibold">Notifications</div>
+                  <div className="p-3 border-b font-semibold">
+                    Notifications
+                  </div>
                   {loadingNotifications ? (
-                    <div className="p-4 text-center text-gray-500">Loading...</div>
+                    <div className="p-4 text-center text-gray-500">
+                      Loading...
+                    </div>
                   ) : notifications.length === 0 ? (
-                    <div className="p-4 text-center text-gray-500">No notifications</div>
+                    <div className="p-4 text-center text-gray-500">
+                      No notifications
+                    </div>
                   ) : (
                     notifications.map((n) => (
                       <div
@@ -381,10 +442,20 @@ export default function Dashboard({ currentUser, onLogout }) {
                         onClick={() => handleMarkRead(n._id)}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{n.type === "friend_request" ? "Friend Request" : n.type === "message" ? "Message" : "Notification"}</span>
-                          <span className="text-xs text-gray-400 ml-auto">{new Date(n.createdAt).toLocaleString()}</span>
+                          <span className="font-medium">
+                            {n.type === "friend_request"
+                              ? "Friend Request"
+                              : n.type === "message"
+                                ? "Message"
+                                : "Notification"}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-auto">
+                            {new Date(n.createdAt).toLocaleString()}
+                          </span>
                         </div>
-                        <div className="text-sm text-gray-700 mt-1">{n.message}</div>
+                        <div className="text-sm text-gray-700 mt-1">
+                          {n.message}
+                        </div>
                       </div>
                     ))
                   )}
@@ -393,14 +464,17 @@ export default function Dashboard({ currentUser, onLogout }) {
             </div>
             {/* User Profile */}
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowProfile(true)}
                 className="p-0 h-auto"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
+                  <AvatarImage
+                    src={currentUser.avatar || "/placeholder.svg"}
+                    alt={currentUser.name}
+                  />
                   <AvatarFallback className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
                     {currentUser.name.charAt(0)}
                   </AvatarFallback>
@@ -410,15 +484,25 @@ export default function Dashboard({ currentUser, onLogout }) {
                 <p className="text-sm font-medium">{currentUser.name}</p>
                 <p className="text-xs text-gray-500">@{currentUser.username}</p>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onLogout}
                 className="text-gray-500 hover:text-red-600"
                 title="Logout"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
                 </svg>
               </Button>
             </div>
@@ -463,74 +547,78 @@ export default function Dashboard({ currentUser, onLogout }) {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setActiveView("discover")}
                 >
                   <Search className="h-4 w-4 mr-2" />
                   Find Friends
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={handleShowDatingMode}
                 >
-                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                   </svg>
                   Dating Mode
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowLanguageLearning(true)}
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
                   Learn Languages
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowTeamsDashboard(true)}
                 >
                   <Building className="h-4 w-4 mr-2" />
                   Teams
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowSubscriptionPlans(true)}
                 >
                   <Crown className="h-4 w-4 mr-2" />
                   Plans
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowGamification(true)}
                 >
                   <Trophy className="h-4 w-4 mr-2" />
                   Achievements
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowSocialFeatures(true)}
                 >
                   <Users className="h-4 w-4 mr-2" />
                   Social Learning
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full justify-start"
                   onClick={() => setShowPremiumFeatures(true)}
                 >
@@ -538,9 +626,9 @@ export default function Dashboard({ currentUser, onLogout }) {
                   Premium Features
                 </Button>
                 {currentUser.isAdmin && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full justify-start border-red-200 text-red-600 hover:bg-red-50"
                     onClick={() => setShowAdminDashboard(true)}
                   >
@@ -562,50 +650,58 @@ export default function Dashboard({ currentUser, onLogout }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => activeChat && handleStartVideoCall(activeChat)}
                   disabled={!activeChat}
                 >
-                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/>
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z" />
                   </svg>
                   <span>Video Calls</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={handleShowDatingMode}
                 >
-                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                  <svg
+                    className="h-4 w-4 mr-2"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                   </svg>
                   <span>Dating Mode</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => setShowLanguageLearning(true)}
                 >
                   <BookOpen className="h-4 w-4 mr-2" />
                   <span>Language Learning</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => setShowTeamsDashboard(true)}
                 >
                   <Building className="h-4 w-4 mr-2" />
                   <span>Teams & Organizations</span>
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full justify-start text-green-600 hover:text-green-700 hover:bg-green-50"
                   onClick={() => setShowSubscriptionPlans(true)}
                 >
@@ -622,8 +718,12 @@ export default function Dashboard({ currentUser, onLogout }) {
               <CardHeader className="border-b bg-gradient-to-r from-green-50 to-blue-50">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-2xl">Welcome back, {currentUser.name}! 👋</CardTitle>
-                    <p className="text-gray-600 mt-1">Discover new friends and start conversations</p>
+                    <CardTitle className="text-2xl">
+                      Welcome back, {currentUser.name}! 👋
+                    </CardTitle>
+                    <p className="text-gray-600 mt-1">
+                      Discover new friends and start conversations
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Trending Badge removed as per the change */}
@@ -632,36 +732,33 @@ export default function Dashboard({ currentUser, onLogout }) {
               </CardHeader>
 
               <CardContent className="p-0">
-                <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
+                <Tabs
+                  value={activeView}
+                  onValueChange={setActiveView}
+                  className="w-full"
+                >
                   {!activeChat && (
-                    <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-none">
-                      <TabsTrigger 
-                        value="discover" 
+                    <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-none">
+                      <TabsTrigger
+                        value="discover"
                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
                       >
                         <Users className="h-4 w-4 mr-2" />
                         Discover
                       </TabsTrigger>
-                      <TabsTrigger 
-                        value="requests" 
+                      <TabsTrigger
+                        value="requests"
                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
                         Requests
                       </TabsTrigger>
-                      <TabsTrigger 
-                        value="friends" 
+                      <TabsTrigger
+                        value="friends"
                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
                       >
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Friends
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="find-friends" 
-                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Find Friends
                       </TabsTrigger>
                     </TabsList>
                   )}
@@ -670,19 +767,21 @@ export default function Dashboard({ currentUser, onLogout }) {
                     {activeChat ? (
                       <div className="h-[500px] flex flex-col">
                         <div className="flex items-center justify-between mb-3 pb-2 border-b">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={handleBackFromChat}
                             className="text-gray-500 hover:text-gray-700"
                           >
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to Friends
                           </Button>
-                          <h3 className="text-lg font-semibold">Chat with {activeChat.name}</h3>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <h3 className="text-lg font-semibold">
+                            Chat with {activeChat.name}
+                          </h3>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleStartVideoCall(activeChat)}
                             className="text-blue-600 hover:text-blue-700"
                           >
@@ -691,9 +790,9 @@ export default function Dashboard({ currentUser, onLogout }) {
                           </Button>
                         </div>
                         <div className="flex-1 border rounded-lg overflow-hidden">
-                          <ChatInterface 
-                            currentUser={currentUser} 
-                            chatPartner={activeChat} 
+                          <ChatInterface
+                            currentUser={currentUser}
+                            chatPartner={activeChat}
                             onBack={handleBackFromChat}
                           />
                         </div>
@@ -701,7 +800,10 @@ export default function Dashboard({ currentUser, onLogout }) {
                     ) : (
                       <>
                         <TabsContent value="discover" className="mt-0">
-                          <DiscoverUsers currentUser={currentUser} onStartChat={handleStartChat} />
+                          <DiscoverUsers
+                            currentUser={currentUser}
+                            onStartChat={handleStartChat}
+                          />
                         </TabsContent>
 
                         <TabsContent value="requests" className="mt-0">
@@ -709,17 +811,17 @@ export default function Dashboard({ currentUser, onLogout }) {
                         </TabsContent>
 
                         <TabsContent value="friends" className="mt-0">
-                          <FriendsList 
-                            currentUser={currentUser} 
-                            onStartChat={handleStartChat} 
+                          <FriendsList
+                            currentUser={currentUser}
+                            onStartChat={handleStartChat}
                             onStartVideo={handleStartVideoCall}
                           />
                         </TabsContent>
 
                         <TabsContent value="find-friends" className="mt-0">
-                          <DiscoverUsers 
-                            currentUser={currentUser} 
-                            onStartChat={handleStartChat} 
+                          <DiscoverUsers
+                            currentUser={currentUser}
+                            onStartChat={handleStartChat}
                             mode="friends"
                           />
                         </TabsContent>
@@ -740,10 +842,14 @@ export default function Dashboard({ currentUser, onLogout }) {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold">Your Profile</h2>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => { setShowProfile(false); setEditMode(false); setAvatarFile(null); }}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowProfile(false);
+                    setEditMode(false);
+                    setAvatarFile(null);
+                  }}
                   className="text-gray-500 hover:text-gray-700"
                 >
                   <X className="h-5 w-5" />
@@ -754,7 +860,14 @@ export default function Dashboard({ currentUser, onLogout }) {
                 {/* Profile Picture */}
                 <div className="text-center">
                   <Avatar className="h-16 w-16 mx-auto">
-                    <AvatarImage src={editProfile?.avatar || currentUser.avatar || "/placeholder.svg"} alt={editProfile?.name || currentUser.name} />
+                    <AvatarImage
+                      src={
+                        editProfile?.avatar ||
+                        currentUser.avatar ||
+                        "/placeholder.svg"
+                      }
+                      alt={editProfile?.name || currentUser.name}
+                    />
                     <AvatarFallback className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
                       {(editProfile?.name || currentUser.name).charAt(0)}
                     </AvatarFallback>
@@ -768,73 +881,107 @@ export default function Dashboard({ currentUser, onLogout }) {
                         accept="image/*"
                         className="hidden"
                         onChange={async (e) => {
-                          const file = e.target.files[0]
+                          const file = e.target.files[0];
                           if (file) {
                             try {
                               // Check if we have the required environment variable
-                              const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
-                              if (!cloudName || cloudName === 'your_cloud_name_here') {
-                                alert('Cloudinary not configured. Please set up your Cloudinary credentials in .env.local file.')
-                                return
+                              const cloudName =
+                                process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+                              if (
+                                !cloudName ||
+                                cloudName === "your_cloud_name_here"
+                              ) {
+                                alert(
+                                  "Cloudinary not configured. Please set up your Cloudinary credentials in .env.local file.",
+                                );
+                                return;
                               }
 
                               // Create FormData for Cloudinary upload
-                              const formData = new FormData()
-                              formData.append('file', file)
-                              formData.append('upload_preset', 'sayhi-avatars')
-                              formData.append('cloud_name', cloudName)
+                              const formData = new FormData();
+                              formData.append("file", file);
+                              formData.append("upload_preset", "sayhi-avatars");
+                              formData.append("cloud_name", cloudName);
 
-                              console.log('Uploading to Cloudinary...', { cloudName, fileSize: file.size })
+                              console.log("Uploading to Cloudinary...", {
+                                cloudName,
+                                fileSize: file.size,
+                              });
 
-                              const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-                                method: 'POST',
-                                body: formData
-                              })
+                              const response = await fetch(
+                                `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+                                {
+                                  method: "POST",
+                                  body: formData,
+                                },
+                              );
 
                               if (!response.ok) {
-                                const errorData = await response.text()
-                                console.error('Cloudinary upload failed:', response.status, errorData)
-                                throw new Error(`Upload failed: ${response.status}`)
+                                const errorData = await response.text();
+                                console.error(
+                                  "Cloudinary upload failed:",
+                                  response.status,
+                                  errorData,
+                                );
+                                throw new Error(
+                                  `Upload failed: ${response.status}`,
+                                );
                               }
 
-                              const result = await response.json()
-                              console.log('Upload result:', result)
+                              const result = await response.json();
+                              console.log("Upload result:", result);
 
                               if (result.secure_url) {
                                 // Update profile with new avatar
-                                const updateResponse = await fetch('/api/users', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    action: 'updateProfile',
-                                    userId: currentUser.id,
-                                    updates: { avatar: result.secure_url }
-                                  })
-                                })
+                                const updateResponse = await fetch(
+                                  "/api/users",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      action: "updateProfile",
+                                      userId: currentUser.id,
+                                      updates: { avatar: result.secure_url },
+                                    }),
+                                  },
+                                );
 
                                 if (updateResponse.ok) {
                                   // Update the current user state instead of reloading
-                                  const updatedUser = { ...currentUser, avatar: result.secure_url }
+                                  const updatedUser = {
+                                    ...currentUser,
+                                    avatar: result.secure_url,
+                                  };
                                   // You might need to pass this up to the parent component
                                   // For now, we'll reload but you can implement a callback
-                                  window.location.reload()
+                                  window.location.reload();
                                 } else {
-                                  alert('Failed to update profile. Please try again.')
+                                  alert(
+                                    "Failed to update profile. Please try again.",
+                                  );
                                 }
                               } else {
-                                alert('Failed to upload image. Please try again.')
+                                alert(
+                                  "Failed to upload image. Please try again.",
+                                );
                               }
                             } catch (error) {
-                              console.error('Upload error:', error)
-                              alert(`Upload failed: ${error.message}. Please check your Cloudinary configuration.`)
+                              console.error("Upload error:", error);
+                              alert(
+                                `Upload failed: ${error.message}. Please check your Cloudinary configuration.`,
+                              );
                             }
                           }
                         }}
                       />
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={() => document.getElementById('avatar-upload').click()}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          document.getElementById("avatar-upload").click()
+                        }
                         className="w-full mt-2"
                       >
                         <Paperclip className="h-4 w-4 mr-2" />
@@ -848,27 +995,45 @@ export default function Dashboard({ currentUser, onLogout }) {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Full Name
+                      </label>
                       {editMode ? (
                         <input
                           className="text-sm text-gray-900 bg-gray-50 p-2 rounded w-full border"
                           value={editProfile.name}
-                          onChange={e => setEditProfile({ ...editProfile, name: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              name: e.target.value,
+                            })
+                          }
                         />
                       ) : (
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{currentUser.name}</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                          {currentUser.name}
+                        </p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Username
+                      </label>
                       {editMode ? (
                         <input
                           className="text-sm text-gray-900 bg-gray-50 p-2 rounded w-full border"
                           value={editProfile.username}
-                          onChange={e => setEditProfile({ ...editProfile, username: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              username: e.target.value,
+                            })
+                          }
                         />
                       ) : (
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">@{currentUser.username}</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                          @{currentUser.username}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -882,7 +1047,9 @@ export default function Dashboard({ currentUser, onLogout }) {
                       {editMode ? (
                         <Select
                           value={editProfile.language}
-                          onValueChange={value => setEditProfile({ ...editProfile, language: value })}
+                          onValueChange={(value) =>
+                            setEditProfile({ ...editProfile, language: value })
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Language" />
@@ -896,7 +1063,9 @@ export default function Dashboard({ currentUser, onLogout }) {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{currentUser.language}</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                          {currentUser.language}
+                        </p>
                       )}
                     </div>
                     <div>
@@ -907,7 +1076,9 @@ export default function Dashboard({ currentUser, onLogout }) {
                       {editMode ? (
                         <Select
                           value={editProfile.region}
-                          onValueChange={value => setEditProfile({ ...editProfile, region: value })}
+                          onValueChange={(value) =>
+                            setEditProfile({ ...editProfile, region: value })
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Region" />
@@ -921,29 +1092,44 @@ export default function Dashboard({ currentUser, onLogout }) {
                           </SelectContent>
                         </Select>
                       ) : (
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{currentUser.region}</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                          {currentUser.region}
+                        </p>
                       )}
                     </div>
                   </div>
 
                   {(editMode || currentUser.bio) && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Bio
+                      </label>
                       {editMode ? (
                         <textarea
                           className="text-sm text-gray-900 bg-gray-50 p-2 rounded w-full border"
                           value={editProfile.bio}
-                          onChange={e => setEditProfile({ ...editProfile, bio: e.target.value })}
+                          onChange={(e) =>
+                            setEditProfile({
+                              ...editProfile,
+                              bio: e.target.value,
+                            })
+                          }
                         />
                       ) : (
-                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{currentUser.bio}</p>
+                        <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                          {currentUser.bio}
+                        </p>
                       )}
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
-                    <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded font-mono">{currentUser.id}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      User ID
+                    </label>
+                    <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded font-mono">
+                      {currentUser.id}
+                    </p>
                   </div>
                 </div>
 
@@ -951,51 +1137,70 @@ export default function Dashboard({ currentUser, onLogout }) {
                 <div className="flex gap-2 pt-4 border-t">
                   {editMode ? (
                     <>
-                      <Button variant="outline" className="flex-1" onClick={async () => {
-                        setSaving(true)
-                        try {
-                          const response = await fetch('/api/users', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              action: 'updateProfile',
-                              userId: editProfile.id,
-                              updates: {
-                                name: editProfile.name,
-                                username: editProfile.username,
-                                language: editProfile.language,
-                                region: editProfile.region,
-                                bio: editProfile.bio || "",
-                                avatar: editProfile.avatar
-                              }
-                            })
-                          })
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={async () => {
+                          setSaving(true);
+                          try {
+                            const response = await fetch("/api/users", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify({
+                                action: "updateProfile",
+                                userId: editProfile.id,
+                                updates: {
+                                  name: editProfile.name,
+                                  username: editProfile.username,
+                                  language: editProfile.language,
+                                  region: editProfile.region,
+                                  bio: editProfile.bio || "",
+                                  avatar: editProfile.avatar,
+                                },
+                              }),
+                            });
 
-                          const data = await response.json()
-                          setSaving(false)
+                            const data = await response.json();
+                            setSaving(false);
 
-                          if (data.user) {
-                            setEditMode(false)
-                            setAvatarFile(null)
-                            setShowProfile(false)
-                            window.location.reload() // or update state
+                            if (data.user) {
+                              setEditMode(false);
+                              setAvatarFile(null);
+                              setShowProfile(false);
+                              window.location.reload(); // or update state
+                            }
+                          } catch (error) {
+                            console.error("Failed to update profile:", error);
+                            setSaving(false);
                           }
-                        } catch (error) {
-                          console.error('Failed to update profile:', error)
-                          setSaving(false)
-                        }
-                      }} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save'}
+                        }}
+                        disabled={saving}
+                      >
+                        {saving ? "Saving..." : "Save"}
                       </Button>
-                      <Button variant="outline" className="flex-1" onClick={() => { setEditMode(false); setAvatarFile(null); }}>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setEditMode(false);
+                          setAvatarFile(null);
+                        }}
+                      >
                         Cancel
                       </Button>
                     </>
                   ) : (
                     <>
-                      <Button variant="outline" className="flex-1" onClick={() => { setEditMode(true); setEditProfile(currentUser); }}>
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => {
+                          setEditMode(true);
+                          setEditProfile(currentUser);
+                        }}
+                      >
                         Edit Profile
                       </Button>
                     </>
@@ -1007,5 +1212,5 @@ export default function Dashboard({ currentUser, onLogout }) {
         </div>
       )}
     </div>
-  )
+  );
 }
