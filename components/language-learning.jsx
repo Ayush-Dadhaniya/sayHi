@@ -561,7 +561,7 @@ export default function LanguageLearning({ currentUser, onBack }) {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {question.options.map((option, index) => (
+                  {question.options && question.options.map((option, index) => (
                     <Button
                       key={index}
                       variant="outline"

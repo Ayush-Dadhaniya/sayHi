@@ -87,7 +87,7 @@ const REGIONS = [
   "Mexico",
 ]
 
-export default function Dashboard({ currentUser, onStartChat, onLogout }) {
+export default function Dashboard({ currentUser, onLogout }) {
   const [activeView, setActiveView] = useState("discover")
   const [showProfile, setShowProfile] = useState(false)
   const [editMode, setEditMode] = useState(false)
@@ -168,7 +168,7 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
         console.error("Failed to fetch friends count:", error)
       }
     }
-    
+
     if (currentUser?.id) {
       fetchFriendsCount()
     }
@@ -247,14 +247,14 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
         },
         body: JSON.stringify({ notificationId }),
       })
-      
+
       console.log("Response status:", response.status)
-      
+
       if (response.ok) {
         console.log("Successfully marked as read")
         // Update local state to mark as read
         setNotifications((prev) => prev.map(n => n._id === notificationId ? { ...n, read: true } : n))
-        
+
         // Refresh notifications to get updated list (this will also clean up old ones)
         const refreshResponse = await fetch("/api/notifications", {
           headers: { Authorization: `Bearer ${token}` },
@@ -381,7 +381,9 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                 className="text-gray-500 hover:text-red-600"
                 title="Logout"
               >
-                <Settings className="h-4 w-4" />
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </Button>
             </div>
           </div>
@@ -568,11 +570,11 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                   </div>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="p-0">
                 <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
                   {!activeChat && (
-                    <TabsList className="grid w-full grid-cols-3 bg-gray-100 p-1 rounded-none">
+                    <TabsList className="grid w-full grid-cols-4 bg-gray-100 p-1 rounded-none">
                       <TabsTrigger 
                         value="discover" 
                         className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
@@ -593,6 +595,13 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                       >
                         <MessageCircle className="h-4 w-4 mr-2" />
                         Friends
+                      </TabsTrigger>
+                      <TabsTrigger 
+                        value="find-friends" 
+                        className="data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Find Friends
                       </TabsTrigger>
                     </TabsList>
                   )}
@@ -634,16 +643,24 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                         <TabsContent value="discover" className="mt-0">
                           <DiscoverUsers currentUser={currentUser} onStartChat={handleStartChat} />
                         </TabsContent>
-                        
+
                         <TabsContent value="requests" className="mt-0">
                           <FriendRequests currentUser={currentUser} />
                         </TabsContent>
-                        
+
                         <TabsContent value="friends" className="mt-0">
                           <FriendsList 
                             currentUser={currentUser} 
                             onStartChat={handleStartChat} 
                             onStartVideo={handleStartVideoCall}
+                          />
+                        </TabsContent>
+                        
+                        <TabsContent value="find-friends" className="mt-0">
+                          <DiscoverUsers 
+                            currentUser={currentUser} 
+                            onStartChat={handleStartChat} 
+                            mode="friends"
                           />
                         </TabsContent>
                       </>
@@ -706,23 +723,23 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                               formData.append('file', file)
                               formData.append('upload_preset', 'sayhi-avatars')
                               formData.append('cloud_name', cloudName)
-                              
+
                               console.log('Uploading to Cloudinary...', { cloudName, fileSize: file.size })
-                              
+
                               const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
                                 method: 'POST',
                                 body: formData
                               })
-                              
+
                               if (!response.ok) {
                                 const errorData = await response.text()
                                 console.error('Cloudinary upload failed:', response.status, errorData)
                                 throw new Error(`Upload failed: ${response.status}`)
                               }
-                              
+
                               const result = await response.json()
                               console.log('Upload result:', result)
-                              
+
                               if (result.secure_url) {
                                 // Update profile with new avatar
                                 const updateResponse = await fetch('/api/users', {
@@ -734,7 +751,7 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                                     updates: { avatar: result.secure_url }
                                   })
                                 })
-                                
+
                                 if (updateResponse.ok) {
                                   // Update the current user state instead of reloading
                                   const updatedUser = { ...currentUser, avatar: result.secure_url }
@@ -895,10 +912,10 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
                               }
                             })
                           })
-                          
+
                           const data = await response.json()
                           setSaving(false)
-                          
+
                           if (data.user) {
                             setEditMode(false)
                             setAvatarFile(null)
@@ -931,4 +948,4 @@ export default function Dashboard({ currentUser, onStartChat, onLogout }) {
       )}
     </div>
   )
-} 
+}

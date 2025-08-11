@@ -61,40 +61,44 @@ export async function GET(req) {
   const usersCollection = db.collection("users")
   const friendRequestsCollection = db.collection("friendRequests")
   const friendshipsCollection = db.collection("friendships")
+  const lessonsCollection = db.collection("lessons") // Assuming a lessons collection exists
 
   if (action === "discover") {
     const currentUserId = searchParams.get("currentUserId")
-    
-    // Get all users except current user
-    const allUsers = await usersCollection.find({ id: { $ne: currentUserId } }).toArray()
-    
+
+    // Get all users except current user and admin users
+    const allUsers = await usersCollection.find({
+      id: { $ne: currentUserId },
+      isAdmin: { $ne: true }
+    }).toArray()
+
     // Get existing friendships for current user
     const userFriendships = await friendshipsCollection.find({
       $or: [{ user1: currentUserId }, { user2: currentUserId }]
     }).toArray()
     const friendIds = userFriendships.map((f) => (f.user1 === currentUserId ? f.user2 : f.user1))
-    
+
     // Get friend requests sent TO current user (users who have sent requests to current user)
     const receivedRequests = await friendRequestsCollection.find({
       toUserId: currentUserId,
       status: "pending"
     }).toArray()
     const receivedRequestIds = receivedRequests.map(req => req.fromUserId)
-    
+
     // Get friend requests sent BY current user
     const sentRequests = await friendRequestsCollection.find({
       fromUserId: currentUserId,
       status: "pending"
     }).toArray()
     const sentRequestIds = sentRequests.map(req => req.toUserId)
-    
+
     // Filter out users who are already friends, have sent requests to current user, or have received requests from current user
-    const filteredUsers = allUsers.filter(user => 
-      !friendIds.includes(user.id) && 
-      !receivedRequestIds.includes(user.id) && 
+    const filteredUsers = allUsers.filter(user =>
+      !friendIds.includes(user.id) &&
+      !receivedRequestIds.includes(user.id) &&
       !sentRequestIds.includes(user.id)
     )
-    
+
     return Response.json({ users: filteredUsers })
   }
 
@@ -114,7 +118,7 @@ export async function GET(req) {
       toUserId: userId,
       status: "pending"
     }).toArray()
-    
+
     const requestsWithUsers = await Promise.all(
       pendingRequests.map(async (req) => ({
         ...req,
@@ -131,13 +135,49 @@ export async function GET(req) {
       fromUserId: fromUserId,
       status: "pending"
     }).toArray()
-    
+
     return Response.json({ requests: sentRequests })
   }
 
-  // Default: return all users
-  const allUsers = await usersCollection.find({}).toArray()
-  return Response.json({ users: allUsers })
+  if (action === "findFriend") {
+    const searchTerm = searchParams.get("searchTerm")
+    if (!searchTerm) {
+      return Response.json({ error: "Search term is required" }, { status: 400 })
+    }
+
+    const users = await usersCollection.find({
+      $or: [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { username: { $regex: searchTerm, $options: "i" } },
+        { language: { $regex: searchTerm, $options: "i" } }
+      ],
+      id: { $ne: userId }, // Exclude the current user
+      isAdmin: { $ne: true } // Exclude admin users
+    }).toArray()
+
+    return Response.json({ users })
+  }
+
+  // Admin actions for lessons and plans
+  if (action === "getLessons") {
+    const lessons = await lessonsCollection.find({}).toArray()
+    return Response.json({ lessons })
+  }
+
+  // Admin actions for enterprises (assuming an 'enterprises' collection)
+  if (action === "getEnterprises") {
+    const enterprisesCollection = db.collection("enterprises")
+    const enterprises = await enterprisesCollection.find({}).toArray()
+    return Response.json({ enterprises })
+  }
+
+  // Default: return all users (filtered for non-admins when not in admin context)
+  if (action === undefined || action === null) {
+    const allUsers = await usersCollection.find({ isAdmin: { $ne: true } }).toArray()
+    return Response.json({ users: allUsers })
+  }
+
+  return Response.json({ error: "Invalid action" }, { status: 400 })
 }
 
 export async function POST(req) {
@@ -146,17 +186,17 @@ export async function POST(req) {
 
     if (action === "updateProfile") {
       const { userId, updates } = data
-      
+
       const client = await clientPromise
       const db = client.db("sayHi")
       const usersCollection = db.collection("users")
-      
+
       // Update user profile with Cloudinary URL
       await usersCollection.updateOne(
         { id: userId },
         { $set: updates }
       )
-      
+
       const updatedUser = await usersCollection.findOne({ id: userId })
       return Response.json({ user: updatedUser })
     }
@@ -168,12 +208,13 @@ export async function POST(req) {
         ...userData,
         avatar: "/placeholder-user.jpg",
         isOnline: true,
+        isAdmin: false, // Default to not an admin
       }
       try {
         const client = await clientPromise
         const db = client.db("sayHi")
         const result = await db.collection("users").insertOne(newUser)
-        
+
         // Create dating profile if user is interested
         if (interestedInDating) {
           const datingProfile = {
@@ -188,15 +229,15 @@ export async function POST(req) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           }
-          
+
           await db.collection("datingProfiles").insertOne(datingProfile)
         }
-        
+
         // Generate JWT token for new user
         const userWithId = { ...newUser, _id: result.insertedId }
         const token = generateToken(userWithId)
-        
-        return Response.json({ 
+
+        return Response.json({
           user: userWithId,
           token: token
         })
@@ -212,7 +253,7 @@ export async function POST(req) {
         const db = client.db("sayHi")
         const friendRequestsCollection = db.collection("friendRequests")
         const usersCollection = db.collection("users")
-        
+
         // Check if request already exists
         const existingRequest = await friendRequestsCollection.findOne({
           fromUserId: fromUserId,
@@ -228,7 +269,7 @@ export async function POST(req) {
             createdAt: new Date().toISOString(),
           }
           await friendRequestsCollection.insertOne(newRequest)
-          
+
           // Create notification for recipient
           const fromUser = await usersCollection.findOne({ id: fromUserId })
           const notification = {
@@ -241,7 +282,7 @@ export async function POST(req) {
             createdAt: new Date()
           }
           await db.collection("notifications").insertOne(notification)
-          
+
           return Response.json({ request: newRequest })
         }
 
@@ -259,7 +300,7 @@ export async function POST(req) {
         const friendRequestsCollection = db.collection("friendRequests")
         const friendshipsCollection = db.collection("friendships")
         const usersCollection = db.collection("users")
-        
+
         const request = await friendRequestsCollection.findOne({ id: requestId })
 
         if (request) {
@@ -277,7 +318,7 @@ export async function POST(req) {
               user2: request.toUserId,
               createdAt: new Date().toISOString(),
             })
-            
+
             // Create notification for the sender (who sent the original request)
             const toUser = await usersCollection.findOne({ id: request.toUserId })
             const notification = {
@@ -300,6 +341,103 @@ export async function POST(req) {
         return Response.json({ error: error.message }, { status: 500 })
       }
     }
+
+    // Admin action to update lessons
+    if (action === "updateLesson") {
+      const { lessonId, updates } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const lessonsCollection = db.collection("lessons")
+
+      await lessonsCollection.updateOne(
+        { id: lessonId },
+        { $set: updates }
+      )
+      const updatedLesson = await lessonsCollection.findOne({ id: lessonId })
+      return Response.json({ lesson: updatedLesson })
+    }
+
+    // Admin action to create lessons
+    if (action === "createLesson") {
+      const { lessonData } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const lessonsCollection = db.collection("lessons")
+
+      const newLesson = {
+        id: Date.now().toString(),
+        ...lessonData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const result = await lessonsCollection.insertOne(newLesson)
+      return Response.json({ lesson: { ...newLesson, _id: result.insertedId } })
+    }
+
+    // Admin action to update enterprises (assuming an 'enterprises' collection)
+    if (action === "updateEnterprise") {
+      const { enterpriseId, updates } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const enterprisesCollection = db.collection("enterprises")
+
+      await enterprisesCollection.updateOne(
+        { id: enterpriseId },
+        { $set: updates }
+      )
+      const updatedEnterprise = await enterprisesCollection.findOne({ id: enterpriseId })
+      return Response.json({ enterprise: updatedEnterprise })
+    }
+
+    // Admin action to create enterprises (assuming an 'enterprises' collection)
+    if (action === "createEnterprise") {
+      const { enterpriseData } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const enterprisesCollection = db.collection("enterprises")
+
+      const newEnterprise = {
+        id: Date.now().toString(),
+        ...enterpriseData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const result = await enterprisesCollection.insertOne(newEnterprise)
+      return Response.json({ enterprise: { ...newEnterprise, _id: result.insertedId } })
+    }
+
+    // Admin action to update plans (assuming a 'plans' collection)
+    if (action === "updatePlan") {
+      const { planId, updates } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const plansCollection = db.collection("plans")
+
+      await plansCollection.updateOne(
+        { id: planId },
+        { $set: updates }
+      )
+      const updatedPlan = await plansCollection.findOne({ id: planId })
+      return Response.json({ plan: updatedPlan })
+    }
+
+    // Admin action to create plans (assuming a 'plans' collection)
+    if (action === "createPlan") {
+      const { planData } = data
+      const client = await clientPromise
+      const db = client.db("sayHi")
+      const plansCollection = db.collection("plans")
+
+      const newPlan = {
+        id: Date.now().toString(),
+        ...planData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      const result = await plansCollection.insertOne(newPlan)
+      return Response.json({ plan: { ...newPlan, _id: result.insertedId } })
+    }
+
 
     return Response.json({ error: "Invalid action" }, { status: 400 })
   } catch (error) {

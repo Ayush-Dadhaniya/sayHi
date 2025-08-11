@@ -44,8 +44,15 @@ export async function GET(req) {
       course 
     }).toArray()
 
-    // If no lessons found, create default ones
-    if (lessons.length === 0) {
+    // Filter lessons that have valid questions
+    const validLessons = lessons.filter(lesson => 
+      lesson.questions && 
+      Array.isArray(lesson.questions) && 
+      lesson.questions.length > 0
+    )
+
+    // If no valid lessons found, create default ones
+    if (validLessons.length === 0) {
       const defaultLessons = [
         {
           id: Date.now().toString(),
@@ -76,7 +83,7 @@ export async function GET(req) {
       return Response.json({ lessons: defaultLessons })
     }
 
-    return Response.json({ lessons })
+    return Response.json({ lessons: validLessons })
   }
 
   if (action === "getTestHistory") {

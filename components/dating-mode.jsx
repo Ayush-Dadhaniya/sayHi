@@ -22,7 +22,8 @@ import {
   MessageCircle,
   Filter,
   Users,
-  Video
+  Video,
+  LogOut // Added LogOut icon
 } from "lucide-react"
 
 const INTERESTS = [
@@ -33,11 +34,27 @@ const INTERESTS = [
   { id: 5, name: "Coffee", icon: Coffee },
 ]
 
-export default function DatingMode({ currentUser, onBack, onStartChat }) {
+// Placeholder for lesson data, to be fetched or managed by admin
+const LESSONS = [
+  { id: 1, title: "Introduction to French", hasQuestion: true },
+  { id: 2, title: "Spanish Greetings", hasQuestion: false },
+  { id: 3, title: "German Basics", hasQuestion: true },
+  { id: 4, title: "Italian Phrases", hasQuestion: true },
+  { id: 5, title: "Mandarin Essentials", hasQuestion: false },
+];
+
+// Placeholder for plan data, to be fetched or managed by admin
+const PLANS = [
+  { id: 1, name: "Basic", price: "$10/month", features: ["10 lessons", "Basic support"] },
+  { id: 2, name: "Premium", price: "$25/month", features: ["Unlimited lessons", "Priority support", "Dating Mode access"] },
+  { id: 3, name: "Enterprise", price: "$100/month", features: ["Custom solutions", "Dedicated support"] },
+];
+
+export default function DatingMode({ currentUser, onBack, onStartChat, isAdmin }) {
   const [showTerms, setShowTerms] = useState(true)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [wantsDating, setWantsDating] = useState(null)
-  const [activeTab, setActiveTab] = useState("discover") // discover, matches, likes
+  const [activeTab, setActiveTab] = useState("discover") // discover, matches, likes, lessons, admin
   const [datingProfile, setDatingProfile] = useState(null)
   const [potentialMatches, setPotentialMatches] = useState([])
   const [matches, setMatches] = useState([])
@@ -47,6 +64,15 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
   const [maxDistance, setMaxDistance] = useState(50)
   const [showFilters, setShowFilters] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [friendSearchTerm, setFriendSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [showLessonDetails, setShowLessonDetails] = useState(false);
+  const [enterpriseDetails, setEnterpriseDetails] = useState(null);
+  const [showEnterpriseDetails, setShowEnterpriseDetails] = useState(false);
+  const [editablePlans, setEditablePlans] = useState(PLANS);
+  const [editingPlanId, setEditingPlanId] = useState(null);
+  const [editedPlan, setEditedPlan] = useState({});
 
   useEffect(() => {
     checkExistingProfile()
@@ -60,56 +86,81 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
     }
   }, [showTerms])
 
+  // Fetch lessons with questions only
+  const fetchLessonsWithQuestions = async () => {
+    try {
+      // In a real app, this would fetch from an API that filters lessons with questions
+      // For now, we'll use the placeholder LESSONS data
+      const lessonsWithQuestions = LESSONS.filter(lesson => lesson.hasQuestion);
+      return lessonsWithQuestions;
+    } catch (error) {
+      console.error("Failed to fetch lessons with questions:", error);
+      return [];
+    }
+  };
+
+  // Fetch lessons for the "Lessons" tab
+  useEffect(() => {
+    if (activeTab === "lessons") {
+      fetchLessonsWithQuestions().then(data => {
+        // Assuming you want to display all lessons here, filtered by hasQuestion
+        // If you want to fetch lessons specifically for the "lessons" tab, adjust the API call
+        // For now, let's just use the filtered LESSONS data
+        console.log("Lessons with questions:", data); // For debugging
+      });
+    }
+  }, [activeTab]);
+
   const checkExistingProfile = async () => {
     try {
-      const response = await fetch(`/api/dating?action=getProfile&userId=${currentUser.id}`)
-      const data = await response.json()
+      const response = await fetch(`/api/dating?action=getProfile&userId=${currentUser.id}`);
+      const data = await response.json();
 
       if (data.profile) {
-        setDatingProfile(data.profile)
-        setShowTerms(false)
-        setWantsDating(true)
-        setTermsAccepted(true)
+        setDatingProfile(data.profile);
+        setShowTerms(false);
+        setWantsDating(true);
+        setTermsAccepted(true);
       }
     } catch (error) {
-      console.error("Failed to check existing profile:", error)
+      console.error("Failed to check existing profile:", error);
     }
-  }
+  };
 
   const fetchPotentialMatches = async () => {
     try {
-      const response = await fetch(`/api/dating?action=getPotentialMatches&userId=${currentUser.id}`)
-      const data = await response.json()
-      setPotentialMatches(data.matches || [])
-      setCurrentMatchIndex(0)
+      const response = await fetch(`/api/dating?action=getPotentialMatches&userId=${currentUser.id}`);
+      const data = await response.json();
+      setPotentialMatches(data.matches || []);
+      setCurrentMatchIndex(0);
     } catch (error) {
-      console.error("Failed to fetch potential matches:", error)
+      console.error("Failed to fetch potential matches:", error);
     }
-  }
+  };
 
   const fetchMatches = async () => {
     try {
-      const response = await fetch(`/api/dating?action=getMatches&userId=${currentUser.id}`)
-      const data = await response.json()
-      setMatches(data.matches || [])
+      const response = await fetch(`/api/dating?action=getMatches&userId=${currentUser.id}`);
+      const data = await response.json();
+      setMatches(data.matches || []);
     } catch (error) {
-      console.error("Failed to fetch matches:", error)
+      console.error("Failed to fetch matches:", error);
     }
-  }
+  };
 
   const fetchLikes = async () => {
     try {
-      const response = await fetch(`/api/dating?action=getLikes&userId=${currentUser.id}`)
-      const data = await response.json()
-      setReceivedLikes(data.likes || [])
+      const response = await fetch(`/api/dating?action=getLikes&userId=${currentUser.id}`);
+      const data = await response.json();
+      setReceivedLikes(data.likes || []);
     } catch (error) {
-      console.error("Failed to fetch likes:", error)
+      console.error("Failed to fetch likes:", error);
     }
-  }
+  };
 
   const createDatingProfile = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const profileData = {
         age: 25, // You could make this configurable
         occupation: currentUser.occupation || "Not specified",
@@ -118,7 +169,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
         lookingFor: "Friendship and language exchange",
         photos: [currentUser.avatar || "/placeholder.svg"],
         wantsDating: true
-      }
+      };
 
       const response = await fetch("/api/dating", {
         method: "POST",
@@ -128,17 +179,17 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           userId: currentUser.id,
           profileData
         })
-      })
+      });
 
-      const data = await response.json()
-      setDatingProfile(data.profile)
-      setShowTerms(false)
+      const data = await response.json();
+      setDatingProfile(data.profile);
+      setShowTerms(false);
     } catch (error) {
-      console.error("Failed to create dating profile:", error)
+      console.error("Failed to create dating profile:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleLike = async (match) => {
     try {
@@ -150,34 +201,34 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           fromUserId: currentUser.id,
           toUserId: match.userId
         })
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (data.match) {
         // It's a match!
-        alert(`It's a match with ${match.user.name}! 🎉`)
-        fetchMatches() // Refresh matches
+        alert(`It's a match with ${match.user.name}! 🎉`);
+        fetchMatches(); // Refresh matches
       }
 
-      nextMatch()
+      nextMatch();
     } catch (error) {
-      console.error("Failed to like user:", error)
+      console.error("Failed to like user:", error);
     }
-  }
+  };
 
   const handlePass = () => {
-    nextMatch()
-  }
+    nextMatch();
+  };
 
   const nextMatch = () => {
     if (currentMatchIndex < potentialMatches.length - 1) {
-      setCurrentMatchIndex(prev => prev + 1)
+      setCurrentMatchIndex(prev => prev + 1);
     } else {
       // Refresh potential matches or show no more profiles message
-      fetchPotentialMatches()
+      fetchPotentialMatches();
     }
-  }
+  };
 
   const handleRespondToLike = async (like, response) => {
     try {
@@ -190,20 +241,71 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           response,
           currentUserId: currentUser.id
         })
-      })
+      });
 
       if (response === "accept") {
-        alert(`It's a match with ${like.user.name}! 🎉`)
-        fetchMatches()
+        alert(`It's a match with ${like.user.name}! 🎉`);
+        fetchMatches();
       }
 
-      fetchLikes() // Refresh likes
+      fetchLikes(); // Refresh likes
     } catch (error) {
-      console.error("Failed to respond to like:", error)
+      console.error("Failed to respond to like:", error);
     }
-  }
+  };
 
-  const currentMatch = potentialMatches[currentMatchIndex]
+  const handleFindFriend = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/users?search=${friendSearchTerm}`);
+      const data = await response.json();
+      // Filter out the current user and admin users if the current user is not admin
+      const filteredResults = data.users.filter(user =>
+        user.id !== currentUser.id && (!user.isAdmin || (user.isAdmin && isAdmin))
+      );
+      setSearchResults(filteredResults);
+    } catch (error) {
+      console.error("Error finding friends:", error);
+      setSearchResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartChat = (friend) => {
+    onStartChat(friend);
+  };
+
+  const viewLessonDetails = (lesson) => {
+    setSelectedLesson(lesson);
+    setShowLessonDetails(true);
+  };
+
+  const viewEnterpriseDetails = () => {
+    // In a real app, fetch enterprise details from an API
+    setEnterpriseDetails({
+      name: "Enterprise Plan",
+      description: "Custom solutions for businesses with dedicated support.",
+      features: ["Scalable infrastructure", "24/7 premium support", "API access", "Custom integrations"]
+    });
+    setShowEnterpriseDetails(true);
+  };
+
+  const handleEditPlan = (plan) => {
+    setEditingPlanId(plan.id);
+    setEditedPlan({ ...plan });
+  };
+
+  const handleSavePlan = (planId) => {
+    setEditablePlans(editablePlans.map(p => p.id === planId ? editedPlan : p));
+    setEditingPlanId(null);
+  };
+
+  const handlePlanInputChange = (e, field) => {
+    setEditedPlan({ ...editedPlan, [field]: e.target.value });
+  };
+
+  const currentMatch = potentialMatches[currentMatchIndex];
 
   // Terms and Conditions Modal
   if (showTerms) {
@@ -235,13 +337,17 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
               <Button
                 variant={wantsDating === false ? "default" : "outline"}
                 className="w-full"
-                onClick={() => setWantsDating(false)}
+                onClick={() => {
+                  setWantsDating(false);
+                  alert("Please use the 'Find Friends' feature instead!");
+                  onBack();
+                }}
               >
                 No, just looking for friends
               </Button>
             </div>
 
-            {wantsDating !== null && (
+            {wantsDating === true && (
               <>
                 <div className="bg-gray-50 p-4 rounded-lg text-sm">
                   <h4 className="font-semibold mb-2">Terms & Conditions</h4>
@@ -274,14 +380,11 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                   </Button>
                   <Button
                     onClick={() => {
-                      if (wantsDating && termsAccepted) {
-                        createDatingProfile()
-                      } else if (!wantsDating) {
-                        alert("Please use the 'Find Friends' feature instead!")
-                        onBack()
+                      if (termsAccepted) {
+                        createDatingProfile();
                       }
                     }}
-                    disabled={(wantsDating && !termsAccepted) || loading}
+                    disabled={!termsAccepted || loading}
                     className="flex-1"
                   >
                     {loading ? "Creating Profile..." : "Continue"}
@@ -292,7 +395,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -306,18 +409,34 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Dating Mode</h1>
-              <p className="text-gray-600">Find meaningful connections through language learning</p>
+              <h1 className="text-2xl font-bold">
+                {activeTab === "admin" ? "Admin Panel" : "Dating Mode"}
+              </h1>
+              <p className="text-gray-600">{activeTab === "admin" ? "Manage your platform" : "Find meaningful connections through language learning"}</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Button
+                variant={activeTab === "admin" ? "default" : "outline"}
+                onClick={() => setActiveTab(activeTab === "admin" ? "discover" : "admin")}
+              >
+                {activeTab === "admin" ? "Back to Dating" : "Admin Panel"}
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+            <Button variant="outline" onClick={() => { /* Handle Logout */ }}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
-        {showFilters && (
+        {showFilters && activeTab === "discover" && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle>Preferences</CardTitle>
@@ -342,7 +461,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-6">
+        <div className="flex flex-wrap gap-4 mb-6">
           <Button
             variant={activeTab === "discover" ? "default" : "outline"}
             onClick={() => setActiveTab("discover")}
@@ -363,6 +482,20 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
           >
             <Star className="h-4 w-4 mr-2" />
             Likes ({receivedLikes.length})
+          </Button>
+          <Button
+            variant={activeTab === "lessons" ? "default" : "outline"}
+            onClick={() => setActiveTab("lessons")}
+          >
+            <Book className="h-4 w-4 mr-2" />
+            Lessons
+          </Button>
+          <Button
+            variant={activeTab === "find-friends" ? "default" : "outline"}
+            onClick={() => setActiveTab("find-friends")}
+          >
+            <Users className="h-4 w-4 mr-2" />
+            Find Friends
           </Button>
         </div>
 
@@ -477,7 +610,7 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {/* Start video call */}}
+                          onClick={() => { /* Start video call */ }}
                         >
                           <Video className="h-4 w-4" />
                         </Button>
@@ -537,7 +670,177 @@ export default function DatingMode({ currentUser, onBack, onStartChat }) {
             )}
           </div>
         )}
+
+        {/* Lessons Tab */}
+        {activeTab === "lessons" && (
+          <div className="space-y-4">
+            {LESSONS.filter(lesson => lesson.hasQuestion).map((lesson) => (
+              <Card key={lesson.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => viewLessonDetails(lesson)}>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold text-lg">{lesson.title}</h3>
+                  <p className="text-sm text-gray-600">Contains exercises to practice your skills.</p>
+                </CardContent>
+              </Card>
+            ))}
+            {showLessonDetails && selectedLesson && (
+              <Card>
+                <CardContent className="p-4 space-y-4">
+                  <h4 className="font-bold text-xl">{selectedLesson.title}</h4>
+                  <p>Details about the questions in this lesson...</p>
+                  <Button onClick={() => setShowLessonDetails(false)}>Close</Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Find Friends Tab */}
+        {activeTab === "find-friends" && (
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="text"
+                    placeholder="Search for friends by name or language..."
+                    value={friendSearchTerm}
+                    onChange={(e) => setFriendSearchTerm(e.target.value)}
+                    className="flex-grow"
+                  />
+                  <Button onClick={handleFindFriend} disabled={loading}>
+                    {loading ? "Searching..." : "Search"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {searchResults.length > 0 && (
+              <div className="space-y-4">
+                {searchResults.map((user) => (
+                  <Card key={user.id}>
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                          <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold">{user.name}</h3>
+                          <p className="text-sm text-gray-600">{user.occupation || 'User'}</p>
+                          <p className="text-xs text-gray-400">{user.region || 'Unknown region'}</p>
+                        </div>
+                      </div>
+                      <Button onClick={() => handleStartChat(user)}>
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Message
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {friendSearchTerm && searchResults.length === 0 && !loading && (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <p className="text-gray-500">No users found matching your search.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Admin Panel Tab */}
+        {activeTab === "admin" && isAdmin && (
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Lessons</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {LESSONS.filter(lesson => lesson.hasQuestion).map((lesson) => (
+                  <div key={lesson.id} className="flex items-center justify-between">
+                    <span>{lesson.title}</span>
+                    <div>
+                      <Button variant="outline" size="sm" onClick={() => viewLessonDetails(lesson)}>View Details</Button>
+                      {/* Add edit/delete lesson buttons here if needed */}
+                    </div>
+                  </div>
+                ))}
+                {showLessonDetails && selectedLesson && (
+                  <Card>
+                    <CardContent className="p-4 space-y-4">
+                      <h4 className="font-bold text-xl">{selectedLesson.title}</h4>
+                      <p>Details about the questions in this lesson...</p>
+                      <Button onClick={() => setShowLessonDetails(false)}>Close</Button>
+                    </CardContent>
+                  </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Plans</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {editablePlans.map((plan) => (
+                  <div key={plan.id} className="border p-4 rounded-lg shadow-sm">
+                    {editingPlanId === plan.id ? (
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          value={editedPlan.name}
+                          onChange={(e) => handlePlanInputChange(e, 'name')}
+                          className="font-semibold text-lg"
+                        />
+                        <Input
+                          type="text"
+                          value={editedPlan.price}
+                          onChange={(e) => handlePlanInputChange(e, 'price')}
+                        />
+                        <textarea
+                          value={editedPlan.features.join('\n')}
+                          onChange={(e) => setEditedPlan({ ...editedPlan, features: e.target.value.split('\n') })}
+                          className="w-full p-2 border rounded"
+                          rows={3}
+                        />
+                        <Button onClick={() => handleSavePlan(plan.id)}>Save</Button>
+                        <Button variant="outline" onClick={() => setEditingPlanId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-lg">{plan.name}</h3>
+                          <p>{plan.price}</p>
+                          <ul className="text-sm text-gray-600 list-disc pl-5">
+                            {plan.features.map((feature) => <li key={feature}>{feature}</li>)}
+                          </ul>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button variant="outline" onClick={() => handleEditPlan(plan)}>Edit</Button>
+                          <Button variant="outline" onClick={viewEnterpriseDetails}>View Details</Button>
+                          {showEnterpriseDetails && enterpriseDetails && (
+                            <Card>
+                              <CardContent className="p-4 space-y-4">
+                                <h4 className="font-bold text-xl">{enterpriseDetails.name}</h4>
+                                <p>{enterpriseDetails.description}</p>
+                                <ul className="text-sm text-gray-600 list-disc pl-5">
+                                  {enterpriseDetails.features.map((feature) => <li key={feature}>{feature}</li>)}
+                                </ul>
+                                <Button onClick={() => setShowEnterpriseDetails(false)}>Close</Button>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }

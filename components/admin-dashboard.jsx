@@ -17,7 +17,10 @@ import {
   BarChart3,
   Shield,
   Crown,
-  Zap
+  Zap,
+  Eye,
+  Edit,
+  Save
 } from "lucide-react"
 
 export default function AdminDashboard({ currentUser, onBack }) {
@@ -27,6 +30,10 @@ export default function AdminDashboard({ currentUser, onBack }) {
   const [users, setUsers] = useState([])
   const [lessons, setLessons] = useState([])
   const [loading, setLoading] = useState(false)
+  const [viewingEnterprise, setViewingEnterprise] = useState(null)
+  const [viewingLesson, setViewingLesson] = useState(null)
+  const [editingPlan, setEditingPlan] = useState(null)
+  const [plans, setPlans] = useState([])
   
   // Create Enterprise Form
   const [newEnterprise, setNewEnterprise] = useState({
@@ -49,6 +56,7 @@ export default function AdminDashboard({ currentUser, onBack }) {
     fetchOrganizations()
     fetchUsers()
     fetchLessons()
+    fetchPlans()
   }, [])
 
   const fetchStats = async () => {
@@ -88,6 +96,16 @@ export default function AdminDashboard({ currentUser, onBack }) {
       setLessons(data.lessons || [])
     } catch (error) {
       console.error("Failed to fetch lessons:", error)
+    }
+  }
+
+  const fetchPlans = async () => {
+    try {
+      const response = await fetch(`/api/plans?action=getPlans`)
+      const data = await response.json()
+      setPlans(data.plans || [])
+    } catch (error) {
+      console.error("Failed to fetch plans:", error)
     }
   }
 
@@ -141,6 +159,32 @@ export default function AdminDashboard({ currentUser, onBack }) {
       }
     } catch (error) {
       console.error("Failed to create lesson:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUpdatePlan = async (planId, updates) => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "updatePlan",
+          adminUserId: currentUser.id,
+          planId,
+          updates
+        })
+      })
+      
+      if (response.ok) {
+        fetchPlans()
+        setEditingPlan(null)
+        alert("Plan updated successfully!")
+      }
+    } catch (error) {
+      console.error("Failed to update plan:", error)
     } finally {
       setLoading(false)
     }
@@ -251,6 +295,13 @@ export default function AdminDashboard({ currentUser, onBack }) {
             <Users className="h-4 w-4 mr-2" />
             Users
           </Button>
+          <Button
+            variant={activeTab === "plans" ? "default" : "outline"}
+            onClick={() => setActiveTab("plans")}
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Plans
+          </Button>
         </div>
 
         {/* Content */}
@@ -329,7 +380,16 @@ export default function AdminDashboard({ currentUser, onBack }) {
                         <h3 className="font-semibold">{org.name}</h3>
                         <p className="text-sm text-gray-600">{org.description}</p>
                       </div>
-                      <Badge variant="outline">{org.plan}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{org.plan}</Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setViewingEnterprise(org)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -433,7 +493,16 @@ export default function AdminDashboard({ currentUser, onBack }) {
                         <h3 className="font-semibold">{lesson.title}</h3>
                         <p className="text-sm text-gray-600">{lesson.language} - {lesson.course}</p>
                       </div>
-                      <Badge variant="outline">{lesson.questions?.length || 0} questions</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{lesson.questions?.length || 0} questions</Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setViewingLesson(lesson)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -464,6 +533,151 @@ export default function AdminDashboard({ currentUser, onBack }) {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {activeTab === "plans" && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Subscription Plans Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {plans.map(plan => (
+                  <div key={plan.name} className="p-4 border rounded-lg">
+                    {editingPlan === plan.name ? (
+                      <div className="space-y-3">
+                        <Input
+                          value={plan.price}
+                          onChange={(e) => {
+                            const updatedPlans = plans.map(p => 
+                              p.name === plan.name ? {...p, price: parseFloat(e.target.value)} : p
+                            )
+                            setPlans(updatedPlans)
+                          }}
+                          type="number"
+                          placeholder="Price"
+                        />
+                        <Input
+                          value={plan.features?.join(', ') || ''}
+                          onChange={(e) => {
+                            const updatedPlans = plans.map(p => 
+                              p.name === plan.name ? {...p, features: e.target.value.split(', ')} : p
+                            )
+                            setPlans(updatedPlans)
+                          }}
+                          placeholder="Features (comma separated)"
+                        />
+                        <div className="flex gap-2">
+                          <Button onClick={() => handleUpdatePlan(plan.name, plan)}>
+                            <Save className="h-4 w-4 mr-2" />
+                            Save
+                          </Button>
+                          <Button variant="outline" onClick={() => setEditingPlan(null)}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold capitalize">{plan.name} Plan</h3>
+                          <p className="text-gray-600">${plan.price}/month</p>
+                          <p className="text-sm text-gray-500">{plan.features?.join(', ')}</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setEditingPlan(plan.name)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Enterprise Details Modal */}
+        {viewingEnterprise && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-2xl">
+              <CardHeader>
+                <CardTitle>Enterprise Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold">Name</h3>
+                    <p>{viewingEnterprise.name}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Description</h3>
+                    <p>{viewingEnterprise.description}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Plan</h3>
+                    <Badge>{viewingEnterprise.plan}</Badge>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Created</h3>
+                    <p>{new Date(viewingEnterprise.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <Button onClick={() => setViewingEnterprise(null)}>Close</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Lesson Details Modal */}
+        {viewingLesson && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-4xl max-h-96 overflow-y-auto">
+              <CardHeader>
+                <CardTitle>Lesson Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold">Title</h3>
+                    <p>{viewingLesson.title}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Language & Course</h3>
+                    <p>{viewingLesson.language} - {viewingLesson.course}</p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Questions</h3>
+                    <div className="space-y-2">
+                      {viewingLesson.questions?.map((q, index) => (
+                        <div key={index} className="p-3 bg-gray-50 rounded">
+                          <p className="font-medium">{q.question}</p>
+                          {q.options && (
+                            <div className="mt-2">
+                              <p className="text-sm text-gray-600">Options:</p>
+                              <ul className="list-disc list-inside text-sm">
+                                {q.options.map((option, i) => (
+                                  <li key={i} className={q.correct === i ? "text-green-600 font-medium" : ""}>
+                                    {option}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {q.correctAnswer && (
+                            <p className="text-sm text-green-600 mt-1">Answer: {q.correctAnswer}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Button onClick={() => setViewingLesson(null)}>Close</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
