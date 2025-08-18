@@ -1,393 +1,173 @@
-import clientPromise from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb";
 
-export async function GET(req) {
-  const { searchParams } = new URL(req.url)
-  const action = searchParams.get("action")
-  const userId = searchParams.get("userId")
-  const language = searchParams.get("language")
-  const course = searchParams.get("course")
-
-  const client = await clientPromise
-  const db = client.db("sayHi")
-  const progressCollection = db.collection("learningProgress")
-  const testsCollection = db.collection("learningTests")
-  const lessonsCollection = db.collection("lessons")
-  const userScoresCollection = db.collection("userScores")
-
-  if (action === "getProgress") {
-    const progress = await progressCollection.findOne({ userId, language })
-    const userScore = await userScoresCollection.findOne({ userId, language })
-
-    const progressData = progress || {
-      userId,
-      language,
-      courses: {},
-      xp: 0,
-      level: 1,
-      streak: 0,
-      hearts: 5
-    }
-
-    if (userScore) {
-      progressData.totalScore = userScore.totalScore
-      progressData.averageScore = userScore.averageScore
-      progressData.testsCompleted = userScore.testsCompleted
-    }
-
-    return Response.json({ progress: progressData })
-  }
-
-  if (action === "getLessons") {
-    // Get lessons from database
-    const lessons = await lessonsCollection.find({
-      language,
-      course
-    }).toArray()
-
-    // Process lessons to extract individual questions
-    const processedLessons = []
-    
-    for (const lesson of lessons) {
-      if (lesson.questions && Array.isArray(lesson.questions)) {
-        lesson.questions.forEach((question, index) => {
-          // Map database question format to component expected format
-          const processedQuestion = {
-            id: question.id || `${lesson.id}_q${index}`,
-            question: question.question,
-            type: question.options ? "multiple_choice" : "writing",
-            options: question.options || [],
-            correct: question.options ? question.options.findIndex(opt => opt === question.answer) : undefined,
-            correctAnswer: question.answer,
-            audio: question.audio || question.question,
-            difficulty: "beginner"
-          }
-          processedLessons.push(processedQuestion)
-        })
-      }
-    }
-
-    // If no lessons found, create default ones
-    if (processedLessons.length === 0) {
-      const defaultLessons = createDefaultLessons(language, course)
-      if (defaultLessons.length > 0) {
-        await lessonsCollection.insertMany(defaultLessons)
-        return Response.json({ lessons: defaultLessons })
-      }
-    }
-
-    return Response.json({ lessons: processedLessons })
-  }
-
-  if (action === "getTestHistory") {
-    const tests = await testsCollection.find({ userId, language, course }).sort({ createdAt: -1 }).limit(10).toArray()
-    return Response.json({ tests })
-  }
-
-  if (action === "getUserScores") {
-    const scores = await userScoresCollection.findOne({ userId, language })
-    return Response.json({ scores: scores || { totalScore: 0, averageScore: 0, testsCompleted: 0 } })
-  }
-
-  if (action === "getAvailableLanguages") {
-    const languages = await lessonsCollection.distinct("language", { "questions.0": { $exists: true } })
-    return Response.json({ languages })
-  }
-
-  return Response.json({ error: "Invalid action" }, { status: 400 })
+// Helper to get DB and collections
+async function getDB() {
+    const client = await clientPromise;
+    const db = client.db("sayHi");
+    return {
+        progressCollection: db.collection("learningProgress"),
+        testsCollection: db.collection("learningTests"),
+        lessonsCollection: db.collection("lessons"),
+        userScoresCollection: db.collection("userScores"),
+    };
 }
 
-export async function POST(req) {
-  try {
-    const { action, ...data } = await req.json()
-
-    const client = await clientPromise
-    const db = client.db("sayHi")
-    const progressCollection = db.collection("learningProgress")
-    const testsCollection = db.collection("learningTests")
-    const lessonsCollection = db.collection("lessons")
-    const userScoresCollection = db.collection("userScores")
-
-    if (action === "updateProgress") {
-      const { userId, language, course, score, totalQuestions, completedLesson } = data
-
-      // Get current progress
-      let progress = await progressCollection.findOne({ userId, language })
-
-      if (!progress) {
-        progress = {
-          userId,
-          language,
-          courses: {},
-          xp: 0,
-          level: 1,
-          streak: 0,
-          hearts: 5,
-          lastActivity: new Date().toISOString()
+// Action handlers for GET requests
+const getActions = {
+    async getProgress({ progressCollection, userScoresCollection }, { userId, language }) {
+        const progress = await progressCollection.findOne({ userId, language });
+        const userScore = await userScoresCollection.findOne({ userId, language });
+        const progressData = progress || {
+            userId, language, courses: {}, xp: 0, level: 1, streak: 0, hearts: 5,
+        };
+        if (userScore) {
+            progressData.totalScore = userScore.totalScore;
+            progressData.averageScore = userScore.averageScore;
+            progressData.testsCompleted = userScore.testsCompleted;
         }
-      }
+        return Response.json({ progress: progressData });
+    },
+    async getLessons({ lessonsCollection }, { language, course }) {
+        const lessons = await lessonsCollection.find({ language, course }).toArray();
+        const processedLessons = lessons.flatMap(lesson => 
+            (lesson.questions || []).map((question, index) => ({
+                id: question.id || `${lesson.id}_q${index}`,
+                question: question.question,
+                type: question.options ? "multiple_choice" : "writing",
+                options: question.options || [],
+                correct: question.options ? question.options.findIndex(opt => opt === question.answer) : undefined,
+                correctAnswer: question.answer,
+                audio: question.audio || question.question,
+                difficulty: "beginner",
+            }))
+        );
+        return Response.json({ lessons: processedLessons });
+    },
+    async getTestHistory({ testsCollection }, { userId, language, course }) {
+        const tests = await testsCollection.find({ userId, language, course }).sort({ createdAt: -1 }).limit(10).toArray();
+        return Response.json({ tests });
+    },
+    async getUserScores({ userScoresCollection }, { userId, language }) {
+        const scores = await userScoresCollection.findOne({ userId, language });
+        return Response.json({ scores: scores || { totalScore: 0, averageScore: 0, testsCompleted: 0 } });
+    },
+    async getAvailableLanguages({ lessonsCollection }) {
+        const languages = await lessonsCollection.distinct("language", { "questions.0": { $exists: true } });
+        return Response.json({ languages });
+    },
+};
 
-      // Update course progress
-      if (!progress.courses[course]) {
-        progress.courses[course] = { completed: 0, total: 5 }
-      }
+export async function GET(req) {
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+    const params = Object.fromEntries(searchParams.entries());
 
-      if (completedLesson) {
-        progress.courses[course].completed = Math.min(
-          progress.courses[course].completed + 1,
-          progress.courses[course].total
-        )
-      }
-
-      // Update XP and level
-      const xpGained = score * 10
-      progress.xp += xpGained
-      progress.level = Math.floor(progress.xp / 100) + 1
-
-      // Update streak
-      const today = new Date().toDateString()
-      const lastActivity = new Date(progress.lastActivity).toDateString()
-
-      if (today === lastActivity) {
-        // Same day, no change to streak
-      } else if (new Date(today).getTime() - new Date(lastActivity).getTime() === 24 * 60 * 60 * 1000) {
-        // Next day, increment streak
-        progress.streak += 1
-      } else {
-        // Streak broken, reset
-        progress.streak = 1
-      }
-
-      progress.lastActivity = new Date().toISOString()
-
-      await progressCollection.replaceOne(
-        { userId, language },
-        progress,
-        { upsert: true }
-      )
-
-      // Update user scores
-      await updateUserScores(userScoresCollection, userId, language, score, totalQuestions)
-
-      // Update gamification
-      await fetch("/api/gamification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "updateStreak",
-          userId: currentUser.id
-        })
-      })
-
-      await fetch("/api/gamification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "awardPoints",
-          userId: currentUser.id,
-          points: score * 10,
-          activity: "lesson_complete"
-        })
-      })
-
-      return Response.json({ progress })
+    if (action && getActions[action]) {
+        try {
+            const db = await getDB();
+            return await getActions[action](db, params);
+        } catch (error) {
+            console.error(`Error in GET action '${action}':`, error);
+            return Response.json({ error: "Internal Server Error" }, { status: 500 });
+        }
     }
+    return Response.json({ error: "Invalid action" }, { status: 400 });
+}
 
-    if (action === "saveTest") {
-      const { userId, language, course, answers, score, totalQuestions } = data
+// Action handlers for POST requests
+const postActions = {
+    async updateProgress({ progressCollection, userScoresCollection }, data) {
+        const { userId, language, course, score, totalQuestions, completedLesson } = data;
+        let progress = await progressCollection.findOne({ userId, language }) || {
+            userId, language, courses: {}, xp: 0, level: 1, streak: 0, hearts: 5, lastActivity: new Date(0).toISOString()
+        };
 
-      const test = {
-        id: Date.now().toString(),
-        userId,
-        language,
-        course,
-        answers,
-        score,
-        totalQuestions,
-        percentage: Math.round((score / totalQuestions) * 100),
-        createdAt: new Date().toISOString()
-      }
+        if (completedLesson) {
+            progress.courses[course] = {
+                ...progress.courses[course],
+                completed: Math.min((progress.courses[course]?.completed || 0) + 1, 5),
+            };
+        }
+        
+        progress.xp += score * 10;
+        progress.level = Math.floor(progress.xp / 100) + 1;
 
-      await testsCollection.insertOne(test)
+        const today = new Date().toDateString();
+        const lastActivity = new Date(progress.lastActivity).toDateString();
+        if (today !== lastActivity) {
+            progress.streak = new Date(today).getTime() - new Date(lastActivity).getTime() === 24 * 60 * 60 * 1000 ? progress.streak + 1 : 1;
+            progress.lastActivity = new Date().toISOString();
+        }
 
-      // Update user scores
-      await updateUserScores(userScoresCollection, userId, language, score, totalQuestions)
+        await progressCollection.replaceOne({ userId, language }, progress, { upsert: true });
+        await updateUserScores(userScoresCollection, userId, language, score, totalQuestions);
+        // Removed direct fetch to gamification API for better separation of concerns
+        return Response.json({ progress });
+    },
+    async saveTest({ testsCollection, userScoresCollection }, data) {
+        const { userId, language, course, answers, score, totalQuestions } = data;
+        const test = {
+            id: Date.now().toString(), userId, language, course, answers, score, totalQuestions,
+            percentage: Math.round((score / totalQuestions) * 100),
+            createdAt: new Date().toISOString(),
+        };
+        await testsCollection.insertOne(test);
+        await updateUserScores(userScoresCollection, userId, language, score, totalQuestions);
+        return Response.json({ test });
+    },
+    async useHeart({ progressCollection }, { userId, language }) {
+        const result = await progressCollection.updateOne(
+            { userId, language, hearts: { $gt: 0 } },
+            { $inc: { hearts: -1 } }
+        );
+        if (result.modifiedCount > 0) {
+            const progress = await progressCollection.findOne({ userId, language });
+            return Response.json({ hearts: progress.hearts });
+        }
+        return Response.json({ error: "No hearts remaining" }, { status: 400 });
+    },
+    async createLesson({ lessonsCollection }, data) {
+        const { language, course, lessonData } = data;
+        const lesson = {
+            ...lessonData, id: Date.now().toString(), language, course, createdAt: new Date().toISOString(),
+        };
+        await lessonsCollection.insertOne(lesson);
+        return Response.json({ lesson });
+    },
+};
 
-      return Response.json({ test })
+export async function POST(req) {
+    try {
+        const { action, ...data } = await req.json();
+        if (action && postActions[action]) {
+            const db = await getDB();
+            return await postActions[action](db, data);
+        }
+        return Response.json({ error: "Invalid action" }, { status: 400 });
+    } catch (error) {
+        console.error("Language Learning API POST error:", error);
+        return Response.json({ error: "Internal server error" }, { status: 500 });
     }
-
-    if (action === "useHeart") {
-      const { userId, language } = data
-
-      const progress = await progressCollection.findOne({ userId, language })
-      if (progress && progress.hearts > 0) {
-        progress.hearts -= 1
-        await progressCollection.updateOne(
-          { userId, language },
-          { $set: { hearts: progress.hearts } }
-        )
-        return Response.json({ hearts: progress.hearts })
-      }
-
-      return Response.json({ error: "No hearts remaining" }, { status: 400 })
-    }
-
-    if (action === "createLesson") {
-      const { language, course, lessonData } = data
-
-      const lesson = {
-        ...lessonData,
-        id: Date.now().toString(),
-        language,
-        course,
-        createdAt: new Date().toISOString()
-      }
-
-      await lessonsCollection.insertOne(lesson)
-      return Response.json({ lesson })
-    }
-
-    return Response.json({ error: "Invalid action" }, { status: 400 })
-  } catch (error) {
-    console.error("Language Learning API error:", error)
-    return Response.json({ error: "Internal server error" }, { status: 500 })
-  }
 }
 
 async function updateUserScores(userScoresCollection, userId, language, score, totalQuestions) {
-  let userScore = await userScoresCollection.findOne({ userId, language })
-
-  if (!userScore) {
-    userScore = {
-      userId,
-      language,
-      totalScore: 0,
-      averageScore: 0,
-      testsCompleted: 0,
-      bestScore: 0,
-      worstScore: 100
-    }
-  }
-
-  const percentage = Math.round((score / totalQuestions) * 100)
-  userScore.totalScore += score
-  userScore.testsCompleted += 1
-  userScore.averageScore = Math.round((userScore.totalScore / userScore.testsCompleted) * 100) / 100
-  userScore.bestScore = Math.max(userScore.bestScore, percentage)
-  userScore.worstScore = Math.min(userScore.worstScore, percentage)
-  userScore.lastUpdated = new Date().toISOString()
-
-  await userScoresCollection.replaceOne(
-    { userId, language },
-    userScore,
-    { upsert: true }
-  )
-}
-
-function createDefaultLessons(language, course) {
-  const lessonTemplates = {
-    spanish: {
-      basics: [
+    const percentage = Math.round((score / totalQuestions) * 100);
+    await userScoresCollection.updateOne(
+        { userId, language },
         {
-          type: "translate",
-          question: "Translate: 'Hello, how are you?'",
-          options: ["Hola, ¿cómo estás?", "Adiós, gracias", "Por favor, ayuda", "No entiendo"],
-          correct: 0,
-          audio: "Hola, ¿cómo estás?",
-          difficulty: "beginner"
+            $inc: {
+                totalScore: score,
+                testsCompleted: 1,
+            },
+            $max: { bestScore: percentage },
+            $min: { worstScore: percentage },
+            $set: { lastUpdated: new Date().toISOString() },
+            $setOnInsert: { userId, language, averageScore: 0 },
         },
-        {
-          type: "multiple_choice",
-          question: "What does 'Gracias' mean?",
-          options: ["Hello", "Goodbye", "Thank you", "Please"],
-          correct: 2,
-          audio: "Gracias",
-          difficulty: "beginner"
-        },
-        {
-          type: "fill_blank",
-          question: "Complete: 'Me _____ Juan' (My name is Juan)",
-          options: ["llamo", "como", "soy", "tengo"],
-          correct: 0,
-          audio: "Me llamo Juan",
-          difficulty: "beginner"
-        },
-        {
-          type: "listening",
-          question: "What did you hear?",
-          options: ["Buenos días", "Buenas noches", "Buenas tardes", "Hasta luego"],
-          correct: 0,
-          audio: "Buenos días",
-          difficulty: "beginner"
-        },
-        {
-          type: "writing",
-          question: "Write 'Good morning' in Spanish",
-          correctAnswer: "Buenos días",
-          audio: "Buenos días",
-          difficulty: "beginner"
-        }
-      ],
-      food: [
-        {
-          type: "translate",
-          question: "Translate: 'I want water'",
-          options: ["Quiero agua", "Quiero comida", "Quiero café", "Quiero leche"],
-          correct: 0,
-          audio: "Quiero agua",
-          difficulty: "beginner"
-        },
-        {
-          type: "multiple_choice",
-          question: "What does 'Manzana' mean?",
-          options: ["Orange", "Apple", "Banana", "Grape"],
-          correct: 1,
-          audio: "Manzana",
-          difficulty: "beginner"
-        }
-      ]
-    },
-    french: {
-      basics: [
-        {
-          type: "translate",
-          question: "Translate: 'Good morning'",
-          options: ["Bonjour", "Bonsoir", "Salut", "Au revoir"],
-          correct: 0,
-          audio: "Bonjour",
-          difficulty: "beginner"
-        },
-        {
-          type: "multiple_choice",
-          question: "What does 'Merci' mean?",
-          options: ["Hello", "Goodbye", "Thank you", "Please"],
-          correct: 2,
-          audio: "Merci",
-          difficulty: "beginner"
-        }
-      ]
-    },
-    german: {
-      basics: [
-        {
-          type: "translate",
-          question: "Translate: 'Good day'",
-          options: ["Guten Tag", "Gute Nacht", "Hallo", "Auf Wiedersehen"],
-          correct: 0,
-          audio: "Guten Tag",
-          difficulty: "beginner"
-        }
-      ]
-    }
-  }
-
-  const lessons = lessonTemplates[language]?.[course] || []
-  return lessons.map((lessonData, lessonIndex) => ({
-    id: `${language}_${course}_lesson_${lessonIndex + 1}`,
-    language,
-    course,
-    title: `${course.charAt(0).toUpperCase() + course.slice(1)} - Lesson ${lessonIndex + 1}`,
-    questions: [lessonData], // Wrap single question data in array
-    order: lessonIndex + 1,
-    createdAt: new Date().toISOString()
-  }))
+        { upsert: true }
+    );
+    // Recalculate average score separately to avoid race conditions
+    const userScore = await userScoresCollection.findOne({ userId, language });
+    const averageScore = Math.round((userScore.totalScore / userScore.testsCompleted) * 100) / 100;
+    await userScoresCollection.updateOne({ userId, language }, { $set: { averageScore } });
 }

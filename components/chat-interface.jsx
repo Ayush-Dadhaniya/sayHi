@@ -5,7 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Send, Globe, Smile, Paperclip, Image } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { io } from "socket.io-client"
+import { ArrowLeft, Send, Globe, Smile, Paperclip, Image, Video } from "lucide-react"
+import {
+  generateAndStoreKeyPair,
+  getPublicKey,
+  encryptMessage,
+  decryptMessage,
+  importPublicKey,
+  generateAndExportSymmKey,
+  importSymmKey,
+  encryptSymmKey,
+  decryptSymmKey,
+} from "@/lib/crypto"
 
 export default function ChatInterface({ currentUser, chatPartner, onBack }) {
   const [messages, setMessages] = useState([])
@@ -15,7 +28,66 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadingDocument, setUploadingDocument] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [sharedKey, setSharedKey] = useState(null)
+  const socketRef = useRef(null)
   const messagesEndRef = useRef(null)
+
+  useEffect(() => {
+    socketRef.current = io()
+
+    socketRef.current.emit("add-user", currentUser.id)
+
+    socketRef.current.on("new-message", async (message) => {
+      if (sharedKey) {
+        const decryptedMessage = await decryptMessage(
+          message.message,
+          sharedKey,
+          message.iv
+        )
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { ...message, message: decryptedMessage },
+        ])
+      }
+    })
+
+    socketRef.current.on("exchange-key", async ({ from, key }) => {
+      if (from === chatPartner.id) {
+        const decryptedKey = await decryptSymmKey(key)
+        setSharedKey(decryptedKey)
+      }
+    })
+
+    const initiateKeyExchange = async () => {
+      const token = localStorage.getItem("token")
+      const response = await fetch(
+        `/api/keys?userId=${chatPartner.id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      const { publicKey } = await response.json()
+      if (publicKey) {
+        const partnerPubKey = await importPublicKey(publicKey)
+        const { key, jwk } = await generateAndExportSymmKey()
+        setSharedKey(key)
+        const encryptedKey = await encryptSymmKey(key, partnerPubKey)
+        socketRef.current.emit("exchange-key", {
+          to: chatPartner.id,
+          from: currentUser.id,
+          key: encryptedKey,
+        })
+      }
+    }
+
+    if (currentUser.id < chatPartner.id) {
+      initiateKeyExchange()
+    }
+
+    return () => {
+      socketRef.current.disconnect()
+    }
+  }, [currentUser.id, chatPartner.id, sharedKey])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -54,32 +126,19 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
       if (data.messages) {
         const processedMessages = await Promise.all(data.messages.map(async (msg) => {
           const isFromMe = msg.fromUserId === currentUser.id
-          const originalText = msg.message || msg.text || "No message content"
-          
-          // For messages from others, convert to current user's language
-          let convertedText = originalText
-          if (!isFromMe) {
-            try {
-              const converted = await convertToLanguage(originalText, currentUser.language)
-              if (converted && !converted.includes("PLEASE SELECT") && !converted.includes("ERROR")) {
-                convertedText = converted
-              }
-            } catch (error) {
-              console.error("Failed to convert message:", error)
-              convertedText = originalText
-            }
+          let decryptedText = ""
+          if (sharedKey && msg.message) {
+            decryptedText = await decryptMessage(msg.message, sharedKey, msg.iv)
+          } else {
+            decryptedText = msg.message || msg.text || "No message content"
           }
 
           const mappedMsg = {
             ...msg,
             isFromMe,
             sender: isFromMe ? currentUser : chatPartner,
-            // Fix timestamp handling
             timestamp: msg.createdAt ? new Date(msg.createdAt.$date?.$numberLong || msg.createdAt) : new Date(),
-            // Handle converted message
-            convertedText: convertedText,
-            // Ensure text field exists
-            text: originalText
+            text: decryptedText
           }
           return mappedMsg
         }))
@@ -157,45 +216,45 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
       isConverted = false
     }
 
-    // Create optimistic message
-    const optimisticMessage = {
-      id: Date.now().toString(),
-      text: messageText, // Show original text to sender
-      convertedText: convertedText, // Store converted text for partner
-      timestamp: new Date(),
-      isFromMe: true,
-      isConverted,
-      sender: currentUser,
+    if (sharedKey) {
+      const { ciphertext, iv } = await encryptMessage(messageText, sharedKey)
+      const messagePayload = {
+        fromUserId: currentUser.id,
+        toUserId: chatPartner.id,
+        message: ciphertext,
+        iv: iv,
+        timestamp: new Date(),
+      }
+      socketRef.current.emit("send-message", messagePayload)
     }
 
-    setMessages((prev) => [...prev, optimisticMessage])
-
-    // Send real message
-    try {
-      const token = localStorage.getItem("token")
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          toUserId: chatPartner.id,
-          message: messageText,
-          convertedMessage: convertedText,
-          toLanguage: chatPartner.language
+    // Also send to API to store in DB
+    if (sharedKey) {
+      const { ciphertext, iv } = await encryptMessage(messageText, sharedKey);
+      try {
+        const token = localStorage.getItem("token")
+        const response = await fetch("/api/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            toUserId: chatPartner.id,
+            message: ciphertext,
+            iv: iv,
+            toLanguage: chatPartner.language
+          })
         })
-      })
-      
-      if (!response.ok) {
-        throw new Error("Failed to send message")
+        
+        if (!response.ok) {
+          throw new Error("Failed to send message")
+        }
+      } catch (error) {
+        console.error("Failed to send message:", error)
+      } finally {
+        setIsTranslating(false)
       }
-    } catch (error) {
-      console.error("Failed to send message:", error)
-      // Remove optimistic message on error
-      setMessages((prev) => prev.filter(msg => msg.id !== optimisticMessage.id))
-    } finally {
-    setIsTranslating(false)
     }
   }
 
@@ -231,18 +290,15 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
           throw new Error("Failed to send image")
         }
         
-        // Add optimistic message
-        const optimisticMessage = {
-          id: Date.now().toString(),
-          text: "📷 Shared an image",
+        const messagePayload = {
+          fromUserId: currentUser.id,
+          toUserId: chatPartner.id,
+          message: "📷 Shared an image",
           mediaUrl: dataUrl,
           mediaType: "image",
-      timestamp: new Date(),
-          isFromMe: true,
-          sender: currentUser,
+          timestamp: new Date(),
         }
-        
-        setMessages((prev) => [...prev, optimisticMessage])
+        socketRef.current.emit("send-message", messagePayload)
       }
       
       reader.readAsDataURL(file)
@@ -287,18 +343,15 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
           throw new Error("Failed to send document")
         }
         
-        // Add optimistic message
-        const optimisticMessage = {
-          id: Date.now().toString(),
-          text: `📎 Shared a document: ${file.name}`,
+        const messagePayload = {
+          fromUserId: currentUser.id,
+          toUserId: chatPartner.id,
+          message: `📎 Shared a document: ${file.name}`,
           mediaUrl: dataUrl,
           mediaType: "document",
           timestamp: new Date(),
-          isFromMe: true,
-          sender: currentUser,
         }
-        
-        setMessages((prev) => [...prev, optimisticMessage])
+        socketRef.current.emit("send-message", messagePayload)
       }
       
       reader.readAsDataURL(file)
@@ -362,6 +415,11 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
     }
   }
 
+  const handleStartVideoCall = () => {
+    console.log("Starting video call with", chatPartner.name)
+    // Placeholder for starting video call
+  }
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
@@ -374,247 +432,271 @@ export default function ChatInterface({ currentUser, chatPartner, onBack }) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-2 bg-white shadow-sm border-b flex-shrink-0">
-        <Avatar className="h-7 w-7 border-2 border-white shadow-md">
-          <AvatarImage src={chatPartner.avatar || "/placeholder.svg"} alt={chatPartner.name} />
-          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold text-xs">
-            {chatPartner.name.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-gray-900 text-sm truncate">{chatPartner.name}</h3>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full flex-shrink-0"></div>
-            <p className="text-xs text-gray-500 truncate">@{chatPartner.username}</p>
+    <main
+      data-testid="chat-interface"
+      className="flex flex-col h-full bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50"
+    >
+      <header className="flex items-center gap-4 p-3 bg-white shadow-md border-b">
+        <Button onClick={onBack} variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+          <ArrowLeft className="h-5 w-5 text-gray-600" />
+        </Button>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10 border-2 border-white shadow-lg">
+            <AvatarImage src={chatPartner.avatar || "/placeholder.svg"} alt={chatPartner.name} />
+            <AvatarFallback className="bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold">
+              {chatPartner.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-bold text-gray-800 text-base truncate">{chatPartner.name}</h2>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+              <p className="text-xs text-gray-500 truncate">Online</p>
+            </div>
           </div>
         </div>
-        <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200 text-xs flex-shrink-0">
-          <Globe className="h-3 w-3 mr-1" />
-          {chatPartner.language}
+        <div className="flex-grow" />
+        <Badge
+          variant="outline"
+          className="bg-indigo-100 text-indigo-700 border-indigo-200 text-sm font-medium px-3 py-1 rounded-full flex items-center gap-2"
+        >
+          <Globe className="h-4 w-4" />
+          <span>{chatPartner.language}</span>
         </Badge>
-      </div>
+        <Button onClick={handleStartVideoCall} variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-gray-100">
+          <Video className="h-5 w-5 text-gray-600" />
+        </Button>
+      </header>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0">
+      <section className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center py-6">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Globe className="h-5 w-5 text-blue-600" />
+          <div className="text-center py-10">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Globe className="h-8 w-8 text-indigo-500" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Start a conversation!</h3>
-            <p className="text-gray-600 text-xs max-w-xs mx-auto">
-              Send a message to {chatPartner.name} and start connecting. 
-              Messages will be automatically translated between {currentUser.language} and {chatPartner.language}.
+            <h3 className="text-lg font-semibold text-gray-800 mb-1">Start Your Global Conversation!</h3>
+            <p className="text-gray-600 text-sm max-w-md mx-auto">
+              Send your first message to {chatPartner.name}. All messages will be automatically translated
+              between {currentUser.language} and {chatPartner.language}.
             </p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isFromMe ? "justify-end" : "justify-start"}`}
-            >
-              <div className={`flex items-end gap-1 max-w-[80%] ${message.isFromMe ? "flex-row-reverse" : ""}`}>
+          <AnimatePresence>
+            {messages.map((message) => (
+              <motion.div
+                key={message.id}
+                layout
+                initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                transition={{ duration: 0.3 }}
+                className={`flex items-end gap-2 max-w-[85%] ${
+                  message.isFromMe ? "ml-auto flex-row-reverse" : "mr-auto"
+                }`}
+              >
                 {!message.isFromMe && (
-                  <Avatar className="h-4 w-4 mb-1 flex-shrink-0">
+                  <Avatar className="h-6 w-6 mb-1 flex-shrink-0">
                     <AvatarImage src={message.sender.avatar || "/placeholder.svg"} alt={message.sender.name} />
                     <AvatarFallback className="text-xs">{message.sender.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                 )}
                 <div
-                  className={`px-2 py-1 rounded-2xl shadow-sm ${
+                  className={`px-4 py-2 rounded-3xl shadow-md transition-all duration-300 ${
                     message.isFromMe
-                      ? "bg-blue-500 text-white rounded-br-md"
-                      : "bg-white text-gray-900 rounded-bl-md border"
+                      ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-br-lg"
+                      : "bg-white text-gray-800 rounded-bl-lg border border-gray-200"
                   }`}
                 >
                   {message.mediaUrl ? (
-                    <div className="space-y-1">
-                      {message.mediaType?.startsWith('image/') ? (
-                        <img 
-                          src={message.mediaUrl} 
-                          alt="Shared image" 
-                          className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(message.mediaUrl, '_blank')}
+                    <div className="space-y-2">
+                      {message.mediaType?.startsWith("image/") ? (
+                        <img
+                          src={message.mediaUrl}
+                          alt="Shared content"
+                          className="max-w-xs rounded-2xl cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => window.open(message.mediaUrl, "_blank")}
                         />
                       ) : (
-                        <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border cursor-pointer hover:bg-gray-100 transition-colors"
-                             onClick={() => {
-                               // Extract filename from message text
-                               const filename = message.text?.match(/📎 Shared a document: (.+)/)?.[1] || 'document'
-                               handleDocumentDownload(message.mediaUrl, filename)
-                             }}>
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-xs text-gray-700">
+                        <div
+                          className="flex items-center gap-3 p-3 bg-gray-100 rounded-2xl border cursor-pointer hover:bg-gray-200 transition-colors"
+                          onClick={() => {
+                            const filename = message.text?.match(/📎 Shared a document: (.+)/)?.[1] || "document"
+                            handleDocumentDownload(message.mediaUrl, filename)
+                          }}
+                        >
+                          <Paperclip className="h-5 w-5 text-gray-600" />
+                          <span className="text-sm text-gray-800 font-medium">
                             {message.text?.match(/📎 Shared a document: (.+)/)?.[1] || "Shared document"}
                           </span>
                         </div>
                       )}
-                      <p className="text-xs leading-relaxed break-words">
-                        {message.isFromMe ? (message.text || message.message) : (message.convertedText || message.text || message.message)}
+                      <p className="text-sm leading-relaxed break-words">
+                        {message.isFromMe
+                          ? message.text || message.message
+                          : message.convertedText || message.text || message.message}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-xs leading-relaxed break-words">
-                      {message.isFromMe ? (message.text || message.message) : (message.convertedText || message.text || message.message)}
+                    <p className="text-sm leading-relaxed break-words">
+                      {message.isFromMe
+                        ? message.text || message.message
+                        : message.convertedText || message.text || message.message}
                     </p>
                   )}
                   {message.isTranslated && !message.isFromMe && (
-                    <p className="text-xs opacity-75 mt-1 italic">
-                      Translated from {message.fromLanguage}
-                    </p>
+                    <p className="text-xs opacity-80 mt-2 italic">Translated from {message.fromLanguage}</p>
                   )}
-                  <p className={`text-xs mt-1 ${message.isFromMe ? "text-blue-100" : "text-gray-400"}`}>
-                    {(() => {
-                      try {
-                        const date = new Date(message.timestamp)
-                        if (isNaN(date.getTime())) {
-                          return "Just now"
-                        }
-                        return date.toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })
-                      } catch (error) {
-                        return "Just now"
-                      }
-                    })()}
+                  <p
+                    className={`text-xs mt-1.5 opacity-70 ${
+                      message.isFromMe ? "text-indigo-100" : "text-gray-500"
+                    }`}
+                  >
+                    {new Date(message.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
-              </div>
-            </div>
-          ))
+              </motion.div>
+            ))}
+          </AnimatePresence>
         )}
         {isTranslating && (
           <div className="flex justify-start">
-            <div className="flex items-end gap-1">
-              <Avatar className="h-4 w-4 mb-1">
+            <div className="flex items-end gap-2">
+              <Avatar className="h-6 w-6 mb-1">
                 <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
                 <AvatarFallback className="text-xs">{currentUser.name.charAt(0)}</AvatarFallback>
               </Avatar>
-              <div className="bg-gray-100 px-2 py-1 rounded-2xl rounded-bl-md">
-              <div className="flex space-x-1">
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.1s" }}></div>
-                  <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+              <div className="bg-gray-200 px-4 py-2 rounded-3xl rounded-bl-lg">
+                <div className="flex space-x-1.5">
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" />
+                  <div
+                    className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  />
+                  <div
+                    className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  />
                 </div>
               </div>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
-      </div>
+      </section>
 
-      {/* Input */}
-      <div className="p-2 bg-white border-t shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <footer className="p-3 bg-white border-t">
+        <div className="flex items-center gap-3">
           <div className="flex-1 relative">
-                      <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-              placeholder={`Type a message in ${currentUser.language}...`}
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={`Message in ${currentUser.language}...`}
               disabled={isTranslating || uploadingImage || uploadingDocument}
-              className="pr-20 py-1 rounded-full border-2 focus:border-gray-300 focus:ring-0 text-xs h-8"
+              className="pl-4 pr-28 py-2 rounded-full border-2 border-gray-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-200 transition-all text-sm h-12"
             />
-            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex gap-1">
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex gap-1">
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
-                  if (file) {
-                    handleImageUpload(file)
-                  }
-                  // Reset the input so the same file can be selected again
-                  e.target.value = ''
+                  if (file) handleImageUpload(file)
+                  e.target.value = ""
                 }}
                 className="hidden"
                 id="image-upload-input"
               />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 hover:bg-gray-100"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full hover:bg-gray-100"
                 disabled={uploadingImage || uploadingDocument}
                 title="Upload image"
-                onClick={() => document.getElementById('image-upload-input').click()}
+                onClick={() => document.getElementById("image-upload-input").click()}
               >
-                <Image className="h-3 w-3 text-gray-400" />
+                <Image className="h-5 w-5 text-gray-500" />
               </Button>
-              
+
               <div className="relative">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 hover:bg-gray-100"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full hover:bg-gray-100"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                   disabled={uploadingImage || uploadingDocument}
                   title="Add emoji"
                 >
-                  <Smile className="h-3 w-3 text-gray-400" />
+                  <Smile className="h-5 w-5 text-gray-500" />
                 </Button>
-                
-                {showEmojiPicker && (
-                  <div className="absolute bottom-8 right-0 bg-white border rounded-lg shadow-lg p-1 z-10 max-h-32 overflow-y-auto emoji-picker w-48">
-                    <div className="grid grid-cols-6 gap-0.5">
-                      {commonEmojis.map((emoji, index) => (
-                        <button
-                          key={index}
-                          onClick={() => addEmoji(emoji)}
-                          className="w-7 h-7 text-xs hover:bg-gray-100 rounded flex items-center justify-center transition-colors"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+
+                <AnimatePresence>
+                  {showEmojiPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute bottom-12 right-0 bg-white border rounded-2xl shadow-lg p-2 z-10 max-h-48 overflow-y-auto emoji-picker w-64"
+                    >
+                      <div className="grid grid-cols-8 gap-1">
+                        {commonEmojis.map((emoji, index) => (
+                          <button
+                            key={index}
+                            onClick={() => addEmoji(emoji)}
+                            className="w-8 h-8 text-lg hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-              
+
               <input
                 type="file"
                 accept=".pdf,.doc,.docx,.txt,.rtf"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
-                  if (file) {
-                    handleDocumentUpload(file)
-                  }
-                  // Reset the input so the same file can be selected again
-                  e.target.value = ''
+                  if (file) handleDocumentUpload(file)
+                  e.target.value = ""
                 }}
                 className="hidden"
                 id="document-upload-input"
               />
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-6 w-6 p-0 hover:bg-gray-100"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-full hover:bg-gray-100"
                 disabled={uploadingImage || uploadingDocument}
                 title="Upload document"
-                onClick={() => document.getElementById('document-upload-input').click()}
+                onClick={() => document.getElementById("document-upload-input").click()}
               >
-                <Paperclip className="h-3 w-3 text-gray-400" />
+                <Paperclip className="h-5 w-5 text-gray-500" />
               </Button>
             </div>
           </div>
           <Button
             onClick={handleSend}
             disabled={isTranslating || uploadingImage || uploadingDocument || !input.trim()}
-            className="bg-blue-500 hover:bg-blue-600 rounded-full p-1 h-8 w-8 shadow-md flex-shrink-0"
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:opacity-90 rounded-full h-12 w-12 shadow-lg flex-shrink-0 transition-all transform hover:scale-105"
           >
             {isTranslating || uploadingImage || uploadingDocument ? (
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
             ) : (
-              <Send className="h-3 w-3" />
+              <Send className="h-5 w-5" />
             )}
           </Button>
         </div>
-        <div className="text-xs text-gray-500 mt-1 text-center">
-          Messages are automatically translated between {currentUser.language} and {chatPartner.language}
-        </div>
-      </div>
-    </div>
+        <p className="text-xs text-gray-500 mt-2 text-center">
+          ✨ Your messages are automatically translated between {currentUser.language} and {chatPartner.language}.
+        </p>
+      </footer>
+    </main>
   )
 }

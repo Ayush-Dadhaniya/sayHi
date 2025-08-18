@@ -52,7 +52,7 @@ export async function POST(req) {
       return Response.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const { toUserId, message, translatedMessage, fromLanguage, toLanguage, mediaUrl, mediaType } = await req.json()
+    const { toUserId, message, iv, mediaUrl, mediaType } = await req.json()
     
     const client = await clientPromise
     const db = client.db("sayHi")
@@ -72,11 +72,9 @@ export async function POST(req) {
       fromUserId: decoded.id,
       toUserId: toUserId,
       message: message,
-      translatedMessage: translatedMessage || message,
+      iv: iv,
       mediaUrl: mediaUrl, // Add media URL if provided
       mediaType: mediaType, // Add media type if provided
-      fromLanguage: fromLanguage,
-      toLanguage: toLanguage,
       createdAt: new Date(),
       read: false
     }

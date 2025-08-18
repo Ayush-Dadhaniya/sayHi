@@ -114,6 +114,8 @@ export default function SocialFeatures({ currentUser, onBack }) {
     }
   }
 
+  const [enteredSessions, setEnteredSessions] = useState([]);
+
   const handleJoinSession = async (sessionId) => {
     try {
       await fetch("/api/social", {
@@ -125,6 +127,7 @@ export default function SocialFeatures({ currentUser, onBack }) {
           userId: currentUser.id
         })
       })
+      setEnteredSessions([...enteredSessions, sessionId]);
       fetchSocialData()
     } catch (error) {
       console.error("Failed to join session:", error)
@@ -177,6 +180,7 @@ export default function SocialFeatures({ currentUser, onBack }) {
   }
 
   const handleEnterSession = (session) => {
+    setEnteredSessions([...enteredSessions, session.id]);
     // Create a virtual meeting room
     alert(`Welcome to "${session.title}"! 
 
@@ -210,6 +214,9 @@ Click OK to continue...`)
     }
   }
 
+  const [mentorSearch, setMentorSearch] = useState({ name: "", language: "" });
+  const [foundMentors, setFoundMentors] = useState([]);
+
   const handleFindMentor = async () => {
     try {
       const response = await fetch('/api/social', {
@@ -218,35 +225,38 @@ Click OK to continue...`)
         body: JSON.stringify({
           action: 'findMentor',
           userId: currentUser.id,
-          language: currentUser.language || 'Hindi',
-          skillLevel: 'beginner'
+          name: mentorSearch.name,
+          language: mentorSearch.language,
         })
       })
       const data = await response.json()
-      if (data.mentors && data.mentors.length > 0) {
-        // Create mentorship connections for found mentors
-        for (const mentor of data.mentors) {
-          await fetch('/api/social', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'createMentorship',
-              mentorId: mentor.userId,
-              menteeId: currentUser.id,
-              language: currentUser.language || 'Hindi'
-            })
-          })
-        }
-        fetchSocialData() // Refresh to show new mentorships
-        alert(`Found ${data.mentors.length} mentors! Check your mentorship section.`)
-      } else {
-        alert('No mentors found at this time. Try again later!')
+      if (data.mentors) {
+        setFoundMentors(data.mentors);
       }
     } catch (error) {
       console.error('Error finding mentors:', error)
       alert('Failed to find mentors. Please try again.')
     }
   }
+
+  const handleRequestMentorship = async (mentorId, language) => {
+    try {
+      await fetch('/api/social', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'requestMentorship',
+          mentorId: mentorId,
+          studentId: currentUser.id,
+          language: language,
+        })
+      });
+      alert('Mentorship request sent!');
+    } catch (error) {
+      console.error('Error requesting mentorship:', error);
+      alert('Failed to send mentorship request. Please try again.');
+    }
+  };
 
   const handleBecomeMentor = async () => {
     setShowMentorForm(true)
@@ -371,9 +381,11 @@ Click OK to continue...`)
 
                       {session.participants.includes(currentUser.id) ? (
                         <div className="space-y-2">
-                          <Button className="w-full" size="sm" onClick={() => handleEnterSession(session)}>
-                            Enter Session
-                          </Button>
+                          {session.hostId !== currentUser.id && (
+                            <Button className="w-full" size="sm" onClick={() => handleEnterSession(session)} disabled={enteredSessions.includes(session.id)}>
+                              Enter Session
+                            </Button>
+                          )}
                           <Button variant="outline" className="w-full" size="sm" onClick={() => handleLeaveSession(session.id)}>
                             Leave Session
                           </Button>
@@ -382,7 +394,7 @@ Click OK to continue...`)
                         <Button 
                           className="w-full" 
                           size="sm"
-                          disabled={session.participants.length >= session.maxParticipants}
+                          disabled={session.participants.length >= session.maxParticipants || enteredSessions.includes(session.id)}
                           onClick={() => handleJoinSession(session.id)}
                         >
                           Join Session
@@ -551,14 +563,22 @@ Click OK to continue...`)
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <Button 
-                  onClick={handleFindMentor}
-                  className="h-20 flex flex-col items-center justify-center"
-                  variant="outline"
-                >
-                  <Users className="h-8 w-8 mb-2" />
-                  <span>Find a Mentor</span>
-                </Button>
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-semibold mb-2">Find a Mentor</h3>
+                  <div className="flex flex-col gap-2">
+                    <Input 
+                      placeholder="Search by name" 
+                      value={mentorSearch.name} 
+                      onChange={(e) => setMentorSearch({ ...mentorSearch, name: e.target.value })} 
+                    />
+                    <Input 
+                      placeholder="Search by language" 
+                      value={mentorSearch.language} 
+                      onChange={(e) => setMentorSearch({ ...mentorSearch, language: e.target.value })} 
+                    />
+                    <Button onClick={handleFindMentor}>Search</Button>
+                  </div>
+                </div>
                 <Button 
                   onClick={handleBecomeMentor}
                   className="h-20 flex flex-col items-center justify-center"
@@ -568,6 +588,32 @@ Click OK to continue...`)
                   <span>Become a Mentor</span>
                 </Button>
               </div>
+
+              {foundMentors.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Found Mentors</h3>
+                  {foundMentors.map((mentor) => (
+                    <Card key={mentor.id}>
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <Avatar>
+                            <AvatarImage src={mentor.avatar} />
+                            <AvatarFallback>{mentor.name?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h4 className="font-semibold">{mentor.name}</h4>
+                            <p className="text-sm text-gray-500">{mentor.languages.join(', ')}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" onClick={() => handleRequestMentorship(mentor.userId, mentor.languages[0])}>Request Mentorship</Button>
+                          <Button size="sm" variant="outline" disabled>Start Chat</Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
               {mentorships.length > 0 && (
                 <div className="space-y-4">

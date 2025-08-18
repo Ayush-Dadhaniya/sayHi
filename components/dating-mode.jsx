@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
-import { Plane, Music, Camera, Book, Coffee } from "lucide-react"
+import { Plane, Music, Camera, Book, Coffee, ArrowLeft, Filter, LogOut, Users, Heart, Star, MapPin, Globe, X, MessageCircle, Video } from "lucide-react"
 
 const INTERESTS = [
   { id: 1, name: "Travel", icon: Plane },

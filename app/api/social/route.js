@@ -327,7 +327,7 @@ export async function POST(req) {
     }
 
     if (action === "findMentor") {
-      const { userId, language, skillLevel } = data
+      const { userId, language, name } = data
 
       const mentorsCollection = db.collection("mentors")
       const usersCollection = db.collection("users")
@@ -335,14 +335,19 @@ export async function POST(req) {
       const query = {
         userId: { $ne: userId },
         isActive: true,
-        languages: { $in: [language] }
       }
 
-      if (skillLevel) {
-        query.experience = skillLevel
+      if (language) {
+        query.languages = { $in: [language] }
       }
 
-      const mentors = await mentorsCollection.find(query).limit(10).toArray()
+      if (name) {
+        const users = await usersCollection.find({ name: { $regex: name, $options: "i" } }).toArray();
+        const userIds = users.map(user => user.id);
+        query.userId = { $in: userIds };
+      }
+
+      const mentors = await mentorsCollection.find(query).toArray()
 
       // Get user details for each mentor
       const mentorsWithDetails = await Promise.all(

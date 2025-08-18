@@ -6,6 +6,7 @@ import ProfileSetup from "@/components/profile-setup"
 import Login from "@/components/login"
 import Dashboard from "@/components/dashboard"
 import ChatInterface from "@/components/chat-interface"
+import { generateAndStoreKeyPair, getPublicKey } from "@/lib/crypto"
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null)
@@ -14,14 +15,31 @@ export default function App() {
   const [showLogin, setShowLogin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const uploadPublicKey = async (token) => {
+    await generateAndStoreKeyPair()
+    const publicKey = await getPublicKey()
+    if (publicKey) {
+      await fetch("/api/keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ publicKey }),
+      })
+    }
+  }
+
   const handleProfileComplete = (user, token) => {
     setCurrentUser(user)
     localStorage.setItem('token', token)
+    uploadPublicKey(token)
   }
 
   const handleLogin = (user, token) => {
     setCurrentUser(user)
     localStorage.setItem('token', token)
+    uploadPublicKey(token)
   }
 
   const handleShowSignup = () => {
